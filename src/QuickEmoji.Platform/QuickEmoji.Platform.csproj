@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>$(QuickEmojiWindowsTfm)</TargetFramework>
+    <SupportedOSPlatformVersion>$(QuickEmojiMinWindows)</SupportedOSPlatformVersion>
+    <RootNamespace>QuickEmoji.Platform</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\QuickEmoji.Core\QuickEmoji.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="QuickEmoji.Platform.Tests" />
+  </ItemGroup>
+</Project>

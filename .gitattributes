@@ -1,0 +1,14 @@
+* text=auto
+
+# Emoji data must round-trip byte for byte (ZWJ, VS16, tag sequences).
+*.json text eol=lf
+*.tsv text eol=lf
+*.txt text eol=lf
+
+*.cs text eol=crlf
+*.xaml text eol=crlf
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+
+*.ico binary
+*.png binary

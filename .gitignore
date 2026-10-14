@@ -1,0 +1,10 @@
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+*.suo
+.vs/
+.vscode/
+*.binlog
+tools/QuickEmoji.DataBuilder/cache/

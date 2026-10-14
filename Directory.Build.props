@@ -1,0 +1,22 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Product>QuickEmoji</Product>
+    <Company>QuickEmoji</Company>
+    <Copyright>Copyright (c) 2026 QuickEmoji contributors</Copyright>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Windows-bound projects share one Windows TFM. -->
+  <PropertyGroup>
+    <QuickEmojiWindowsTfm>net10.0-windows10.0.26100.0</QuickEmojiWindowsTfm>
+    <QuickEmojiMinWindows>10.0.17763.0</QuickEmojiMinWindows>
+  </PropertyGroup>
+</Project>
