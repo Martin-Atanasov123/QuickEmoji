@@ -4,6 +4,7 @@
     <SupportedOSPlatformVersion>$(QuickEmojiMinWindows)</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>QuickEmoji.Platform.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
