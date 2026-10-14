@@ -4,4 +4,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>QuickEmoji.DataBuilder</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\QuickEmoji.Core\QuickEmoji.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="QuickEmoji.DataBuilder.Tests" />
+  </ItemGroup>
 </Project>

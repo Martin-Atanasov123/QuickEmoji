@@ -35,3 +35,41 @@ Deviations from `SPEC.md` / `CLAUDE.md`, and choices the spec leaves open. Forma
 ### 2026-10-14: Solution file stays `.sln`
 - **Decision:** `QuickEmoji.sln` uses the classic format (`dotnet new sln --format sln`).
 - **Reason:** The .NET 10 SDK defaults to `.slnx`, but CLAUDE.md names `QuickEmoji.sln` in its commands.
+
+---
+
+## Stage 1: Emoji data
+
+### 2026-10-14: Pinned source versions
+- **Decision:** Unicode emoji-test.txt **Emoji 18.0**, cldr-json **48.2.3**, gemoji **v4.1.0**, each pinned by URL and SHA-256 in `SourceManifest.cs`.
+- **Reason:** These are the latest stable releases as of today. cldr-json 49 is still in beta. gemoji has not been released since 2023 and stops at Emoji 15.0; it supplies only aliases and tags, so the gap costs nothing important. CLDR 48 predates Emoji 18.0, so the 9 Emoji 18.0 base emoji take their English name from emoji-test.txt and have no keywords or Bulgarian name. On current Windows builds they are excluded by the font cap anyway (see below).
+
+### 2026-10-14: `popularity.json` is hand-curated (667 entries)
+- **Decision:** The popularity prior is a hand-curated ordering of 667 emoji, most used first.
+- **Reason:** SPEC §3.1 prefers Unicode's published emoji frequency data if its licence permits. Unicode publishes those frequencies as a web page of charts, not as a downloadable dataset with a stated licence, and the page refuses automated access. The list was therefore written by hand from general knowledge of usage. It is slightly longer than "roughly 500" so that common objects, food, sports and flags also get a tie-breaker; ranks beyond about 500 contribute almost nothing to the prior.
+
+### 2026-10-14: Curated inputs live in `Core/Data` and are merged at build time
+- **Decision:** `synonyms.json` and `popularity.json` sit next to `emoji.json` in `src/QuickEmoji.Core/Data/`. DataBuilder validates them (every target must be a fully-qualified base emoji; synonym words must be lowercase and unique) and merges them into `emoji.json`. Only `emoji.json` is embedded in the app.
+- **Reason:** SPEC §3.5 asks for pre-indexed data with no work at runtime beyond deserialising. Editing a synonym therefore means re-running `dotnet run --project tools/QuickEmoji.DataBuilder` (add `-- --offline` once the download cache exists).
+
+### 2026-10-14: gemoji tags become English keywords
+- **Decision:** gemoji `tags` (for example 😀 → "happy", "smile") are appended to the English CLDR keywords. gemoji `aliases` become shortcodes, as SPEC §3.1 says.
+- **Reason:** The tags are short, informal words people actually type. They are MIT-licensed, like the aliases.
+
+### 2026-10-14: Skin-tone variants carry their own emoji version
+- **Decision:** Each variant records its own version when it differs from its base (toned 🤝 is E14.0, while 🤝 is E3.0).
+- **Reason:** Without this, the `MaxEmojiVersion` filter would keep toned handshakes on systems whose font cannot draw them.
+
+### 2026-10-14: `MaxEmojiVersion` is measured from the font, not looked up from the OS build
+- **Decision:** `Platform/Fonts/EmojiFontProbe` shapes every sequence with DirectWrite against Segoe UI Emoji. A sequence that produces the `.notdef` glyph cannot render. The default `MaxEmojiVersion` is the newest emoji version of which at least 90% renders. Each sequence that fails is also excluded individually.
+- **Reason:** SPEC §3.2 asks for the newest version Segoe UI Emoji renders on the user's build, determined and verified rather than guessed. A static table from Windows build to emoji version would be a guess, and Windows updates the font outside feature releases. Measuring is exact and cheap: about 7 ms of shaping for all 3,963 sequences, 25 ms including setup.
+- **Verified on Windows 11 build 26300:** the cap is 17.0. The 22 unrenderable sequences are the 19 Emoji 18.0 sequences plus three Emoji 5.0 tag flags (England, Scotland, Wales). A version cap alone could not exclude those flags. I checked the criterion visually by rendering samples with Segoe UI Emoji in Chromium (which uses the same DirectWrite stack): every `.notdef` result showed as tofu or a wrong fallback (a plain black flag). Sequences that shape to several real glyphs still render correctly, as single composed images.
+- **Consequence (platform limitation, not a deviation):** Segoe UI Emoji has no country-flag artwork, so Windows draws flags such as 🇩🇪 as two regional-indicator letters. They are not tofu, so flags stay searchable and insertable; target apps with their own emoji fonts (browsers, Discord, Telegram) show real flags. The README's known limitations will say so.
+
+### 2026-10-14: Added `tests/QuickEmoji.DataBuilder.Tests`
+- **Decision:** A fourth xUnit project tests DataBuilder's parsers, grouping, merging and writer with small fixtures.
+- **Reason:** CLAUDE.md's layout has no home for build-tool tests, and putting them in Core.Tests would make Core's tests depend on a console tool. CLAUDE.md's layout section now lists the project.
+
+### 2026-10-14: DirectWrite tests run in Platform.Tests under `Category=Win32`
+- **Decision:** `EmojiFontProbeTests` call DirectWrite for real and run in the default test run. They skip if Segoe UI Emoji is missing.
+- **Reason:** CLAUDE.md describes Platform.Tests as pure parts only. The probe's assertions (❤️ renders; an unassigned code point does not) hold on every Windows build that ships the font, and they need no desktop session, so they are safe in CI. The pure logic (`FontCoverageCalculator`) is tested separately.

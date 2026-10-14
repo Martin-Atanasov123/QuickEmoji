@@ -12,6 +12,9 @@
     <ProjectReference Include="..\..\src\QuickEmoji.Core\QuickEmoji.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\data\**\*" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>

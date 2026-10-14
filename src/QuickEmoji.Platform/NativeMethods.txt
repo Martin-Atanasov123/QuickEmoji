@@ -1,0 +1,8 @@
+// DirectWrite: emoji font coverage probe (Fonts/EmojiFontProbe.cs)
+DWriteCreateFactory
+IDWriteFactory
+IDWriteFontCollection
+IDWriteFontFamily
+IDWriteFont
+IDWriteFontFace
+IDWriteTextAnalyzer

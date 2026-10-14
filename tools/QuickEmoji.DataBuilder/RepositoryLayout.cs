@@ -16,6 +16,10 @@ internal sealed class RepositoryLayout
 
     public string EmojiJsonPath => Path.Combine(CoreDataDirectory, "emoji.json");
 
+    public string SynonymsPath => Path.Combine(CoreDataDirectory, "synonyms.json");
+
+    public string PopularityPath => Path.Combine(CoreDataDirectory, "popularity.json");
+
     /// <summary>Downloaded source files; git-ignored.</summary>
     public string CacheDirectory => Path.Combine(Root, "tools", "QuickEmoji.DataBuilder", "cache");
 

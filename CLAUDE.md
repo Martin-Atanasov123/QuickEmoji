@@ -18,6 +18,7 @@ src/QuickEmoji.App         WinUI 3     Composition root, windows, view models, t
 tools/QuickEmoji.DataBuilder console   Downloads pinned emoji sources and writes src/QuickEmoji.Core/Data/emoji.json (committed).
 tests/QuickEmoji.Core.Tests          xUnit
 tests/QuickEmoji.Platform.Tests      xUnit (pure parts only, behind interfaces)
+tests/QuickEmoji.DataBuilder.Tests   xUnit (parsers, grouping, merge, writer)
 tests/QuickEmoji.E2E                 xUnit + FlaUI, [Trait("Category","E2E")], excluded from default runs
 installer/                           Inno Setup script
 docs/                                TESTING.md, DECISIONS.md, ARCHITECTURE.md
@@ -29,7 +30,7 @@ Dependencies point one way only: App → Platform → Core, and App → Core. Co
 - Test: `dotnet test --filter "Category!=E2E"`
 - E2E (interactive desktop only, when asked): `dotnet test --project tests/QuickEmoji.E2E` (build the solution first)
 - Run: `dotnet run --project src/QuickEmoji.App`
-- Regenerate data: `dotnet run --project tools/QuickEmoji.DataBuilder`
+- Regenerate data: `dotnet run --project tools/QuickEmoji.DataBuilder` (add `-- --offline` to use only the download cache)
 - Publish: `dotnet publish src/QuickEmoji.App -c Release -r win-x64 --self-contained` (and `win-arm64`)
 
 Keep these commands accurate. If they change, update this file in the same change.
