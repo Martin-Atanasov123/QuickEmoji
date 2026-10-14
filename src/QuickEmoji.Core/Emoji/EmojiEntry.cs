@@ -23,12 +23,17 @@ public sealed class EmojiEntry
     /// <summary>gemoji aliases such as "thumbsup".</summary>
     public IReadOnlyList<string> Shortcodes { get; init; } = [];
 
+    /// <summary>CLDR English keywords.</summary>
     public IReadOnlyList<string> Keywords { get; init; } = [];
 
+    /// <summary>CLDR Bulgarian keywords.</summary>
     public IReadOnlyList<string> KeywordsBg { get; init; } = [];
 
+    /// <summary>gemoji tags (English), e.g. 😀 → "happy".</summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
+
     /// <summary>Hand-maintained slang and synonyms, English and Bulgarian.</summary>
-    public IReadOnlyList<string> Synonyms { get; init; } = [];
+    public IReadOnlyList<EmojiSynonym> Synonyms { get; init; } = [];
 
     /// <summary>1 = most used; null when outside the popularity list.</summary>
     public int? PopularityRank { get; init; }
@@ -48,6 +53,7 @@ public sealed class EmojiEntry
         Shortcodes = Shortcodes,
         Keywords = Keywords,
         KeywordsBg = KeywordsBg,
+        Tags = Tags,
         Synonyms = Synonyms,
         PopularityRank = PopularityRank,
         Variants = variants,

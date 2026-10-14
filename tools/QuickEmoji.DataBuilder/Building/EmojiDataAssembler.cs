@@ -1,4 +1,3 @@
-using QuickEmoji.Core.Emoji;
 using QuickEmoji.Core.Emoji.Serialization;
 using QuickEmoji.DataBuilder.Parsing;
 
@@ -10,7 +9,8 @@ internal sealed record SourceData(
     Dictionary<string, CldrAnnotation> CldrBulgarian,
     Dictionary<string, GemojiRecord> Gemoji,
     IReadOnlyList<(string Word, IReadOnlyList<string> Emoji)> Synonyms,
-    IReadOnlyList<string> Popularity);
+    IReadOnlyList<string> Popularity,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> ShortcodeExclusions);
 
 /// <summary>Merges every source into the emoji.json model and fails on any reference it cannot resolve.</summary>
 internal static class EmojiDataAssembler
@@ -21,24 +21,26 @@ internal static class EmojiDataAssembler
         var baseByKey = grouped.ToDictionary(g => EmojiKey.Of(g.Base.Emoji), g => g.Base.Emoji, StringComparer.Ordinal);
         var synonyms = InvertSynonyms(sources.Synonyms, baseByKey);
         var popularity = RankPopularity(sources.Popularity, baseByKey);
+        var exclusions = ResolveExclusions(sources.ShortcodeExclusions, sources.Gemoji, baseByKey);
 
-        var records = grouped.Select(g => ToRecord(g, sources, synonyms, popularity)).ToList();
+        var records = grouped.Select(g => ToRecord(g, sources, synonyms, popularity, exclusions)).ToList();
         return new EmojiDataFile { SchemaVersion = EmojiDataFile.CurrentSchemaVersion, Sources = versions, Emoji = records };
     }
 
     private static EmojiRecord ToRecord(
         GroupedEmoji group,
         SourceData sources,
-        Dictionary<string, List<string>> synonyms,
-        Dictionary<string, int> popularity)
+        Dictionary<string, List<SynonymRecord>> synonyms,
+        Dictionary<string, int> popularity,
+        Dictionary<string, IReadOnlyList<string>> exclusions)
     {
         var emoji = group.Base.Emoji;
         var key = EmojiKey.Of(emoji);
         sources.CldrEnglish.TryGetValue(key, out var english);
         sources.CldrBulgarian.TryGetValue(key, out var bulgarian);
         sources.Gemoji.TryGetValue(key, out var gemoji);
+        var excluded = exclusions.GetValueOrDefault(emoji) ?? [];
 
-        var keywords = Distinct((english?.Keywords ?? []).Concat(gemoji?.Tags ?? []));
         return new EmojiRecord
         {
             Emoji = emoji,
@@ -47,9 +49,10 @@ internal static class EmojiDataAssembler
             Version = group.Base.Version.ToString(),
             Group = group.Base.Group,
             Subgroup = group.Base.Subgroup,
-            Shortcodes = NullIfEmpty(Distinct(gemoji?.Aliases ?? [])),
-            Keywords = NullIfEmpty(keywords),
+            Shortcodes = NullIfEmpty(Distinct((gemoji?.Aliases ?? []).Where(a => !excluded.Contains(a, StringComparer.Ordinal)))),
+            Keywords = NullIfEmpty(Distinct(english?.Keywords ?? [])),
             KeywordsBg = NullIfEmpty(Distinct(bulgarian?.Keywords ?? [])),
+            Tags = NullIfEmpty(Distinct(gemoji?.Tags ?? [])),
             Synonyms = synonyms.TryGetValue(emoji, out var words) ? words : null,
             Popularity = popularity.TryGetValue(emoji, out var rank) ? rank : null,
             Variants = group.Variants.Count == 0
@@ -63,21 +66,23 @@ internal static class EmojiDataAssembler
         };
     }
 
-    private static Dictionary<string, List<string>> InvertSynonyms(
+    private static Dictionary<string, List<SynonymRecord>> InvertSynonyms(
         IReadOnlyList<(string Word, IReadOnlyList<string> Emoji)> synonyms,
         Dictionary<string, string> baseByKey)
     {
-        var result = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<SynonymRecord>>(StringComparer.Ordinal);
         foreach (var (word, targets) in synonyms)
         {
-            foreach (var target in targets)
+            for (var position = 0; position < targets.Count; position++)
             {
-                var emoji = ResolveBase(target, baseByKey, $"synonyms.json '{word}'");
-                var words = result.TryGetValue(emoji, out var list) ? list : result[emoji] = [];
-                if (!words.Contains(word, StringComparer.Ordinal))
+                var emoji = ResolveBase(targets[position], baseByKey, $"synonyms.json '{word}'");
+                var records = result.TryGetValue(emoji, out var list) ? list : result[emoji] = [];
+                if (records.Any(r => r.Word == word))
                 {
-                    words.Add(word);
+                    throw new InvalidDataException($"synonyms.json '{word}' lists {targets[position]} twice.");
                 }
+
+                records.Add(new SynonymRecord { Word = word, Rank = position + 1 });
             }
         }
 
@@ -97,6 +102,28 @@ internal static class EmojiDataAssembler
         }
 
         return ranks;
+    }
+
+    /// <summary>Every excluded alias must exist in gemoji, so the file cannot silently go stale.</summary>
+    private static Dictionary<string, IReadOnlyList<string>> ResolveExclusions(
+        IReadOnlyDictionary<string, IReadOnlyList<string>> exclusions,
+        Dictionary<string, GemojiRecord> gemoji,
+        Dictionary<string, string> baseByKey)
+    {
+        var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var (target, aliases) in exclusions)
+        {
+            var emoji = ResolveBase(target, baseByKey, "shortcode-exclusions.json");
+            var known = gemoji.TryGetValue(EmojiKey.Of(emoji), out var record) ? record.Aliases : [];
+            foreach (var alias in aliases.Where(a => !known.Contains(a, StringComparer.Ordinal)))
+            {
+                throw new InvalidDataException($"shortcode-exclusions.json: {emoji} has no gemoji alias '{alias}'.");
+            }
+
+            result[emoji] = aliases;
+        }
+
+        return result;
     }
 
     private static string ResolveBase(string emoji, Dictionary<string, string> baseByKey, string context)

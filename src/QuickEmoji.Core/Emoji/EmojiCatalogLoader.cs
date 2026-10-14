@@ -49,7 +49,8 @@ public static class EmojiCatalogLoader
             Shortcodes = record.Shortcodes ?? [],
             Keywords = record.Keywords ?? [],
             KeywordsBg = record.KeywordsBg ?? [],
-            Synonyms = record.Synonyms ?? [],
+            Tags = record.Tags ?? [],
+            Synonyms = record.Synonyms?.Select(s => new EmojiSynonym(s.Word, s.Rank)).ToArray() ?? [],
             PopularityRank = record.Popularity,
             Variants = record.Variants?.Select(v => ToVariant(v, version)).ToArray() ?? [],
         };

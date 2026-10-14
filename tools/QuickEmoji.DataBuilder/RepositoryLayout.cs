@@ -20,6 +20,8 @@ internal sealed class RepositoryLayout
 
     public string PopularityPath => Path.Combine(CoreDataDirectory, "popularity.json");
 
+    public string ShortcodeExclusionsPath => Path.Combine(CoreDataDirectory, "shortcode-exclusions.json");
+
     /// <summary>Downloaded source files; git-ignored.</summary>
     public string CacheDirectory => Path.Combine(Root, "tools", "QuickEmoji.DataBuilder", "cache");
 

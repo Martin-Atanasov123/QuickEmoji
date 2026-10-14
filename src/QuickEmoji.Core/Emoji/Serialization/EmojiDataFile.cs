@@ -60,14 +60,28 @@ internal sealed class EmojiRecord
     [JsonPropertyName("keywordsBg")]
     public List<string>? KeywordsBg { get; set; }
 
+    /// <summary>gemoji tags, kept apart from CLDR keywords so search can tell when two sources agree.</summary>
+    [JsonPropertyName("tags")]
+    public List<string>? Tags { get; set; }
+
     [JsonPropertyName("synonyms")]
-    public List<string>? Synonyms { get; set; }
+    public List<SynonymRecord>? Synonyms { get; set; }
 
     [JsonPropertyName("popularity")]
     public int? Popularity { get; set; }
 
     [JsonPropertyName("variants")]
     public List<VariantRecord>? Variants { get; set; }
+}
+
+internal sealed class SynonymRecord
+{
+    [JsonPropertyName("word")]
+    public string Word { get; set; } = "";
+
+    /// <summary>1 = this emoji is the first answer listed for the word in synonyms.json.</summary>
+    [JsonPropertyName("rank")]
+    public int Rank { get; set; }
 }
 
 internal sealed class VariantRecord

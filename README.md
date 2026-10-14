@@ -2,7 +2,7 @@
 
 A Windows tray utility: press a global hotkey, type a word, press Enter, and the best emoji for that word appears where you were typing.
 
-> **Status:** Stage 1 (emoji data). The app starts and exits. The emoji catalog (Emoji 18.0, English and Bulgarian keywords) is built and tested. Search, the hotkey and insertion arrive in later stages. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** Stage 2 (search engine). The app starts and exits. The emoji catalog (Emoji 18.0, English and Bulgarian keywords) and the ranked search engine are built and tested (100% of 184 golden cases, p95 latency ≈ 0.1 ms). The hotkey, popup and insertion arrive in later stages. See [docs/PLAN.md](docs/PLAN.md).
 
 ## Build from source
 

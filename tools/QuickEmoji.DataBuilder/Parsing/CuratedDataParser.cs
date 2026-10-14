@@ -41,6 +41,23 @@ internal static class CuratedDataParser
         return result;
     }
 
+    /// <summary>shortcode-exclusions.json: <c>{ "🌔": ["moon"], ... }</c>, gemoji aliases not to index as shortcodes.</summary>
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> ParseShortcodeExclusions(Stream json)
+    {
+        using var document = JsonDocument.Parse(json, Options);
+        var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        foreach (var property in document.RootElement.EnumerateObject())
+        {
+            var aliases = property.Value.EnumerateArray().Select(e => e.GetString()!).ToArray();
+            if (aliases.Length == 0 || !result.TryAdd(property.Name, aliases))
+            {
+                throw new InvalidDataException($"shortcode-exclusions.json: '{property.Name}' is empty or listed twice.");
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>popularity.json: <c>{ "order": ["😂", "❤️", ...] }</c>, most used first.</summary>
     public static IReadOnlyList<string> ParsePopularity(Stream json)
     {

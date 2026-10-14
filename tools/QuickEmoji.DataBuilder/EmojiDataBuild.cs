@@ -25,7 +25,8 @@ internal sealed class EmojiDataBuild(RepositoryLayout layout, SourceCache cache)
             CldrAnnotationParser.Merge(Cldr(paths[SourceManifest.CldrBulgarian]), Cldr(paths[SourceManifest.CldrBulgarianDerived])),
             Parse(paths[SourceManifest.Gemoji], GemojiParser.Parse),
             Parse(layout.SynonymsPath, CuratedDataParser.ParseSynonyms),
-            Parse(layout.PopularityPath, CuratedDataParser.ParsePopularity));
+            Parse(layout.PopularityPath, CuratedDataParser.ParsePopularity),
+            Parse(layout.ShortcodeExclusionsPath, CuratedDataParser.ParseShortcodeExclusions));
 
         var versions = new EmojiDataSources
         {

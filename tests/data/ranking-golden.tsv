@@ -1,0 +1,201 @@
+# Golden ranking cases (SPEC §3.6). Columns: query <TAB> expected_top1 <TAB> expected_top3_set (space-separated;
+# every listed emoji must appear in the top 3). Lines starting with # are comments; "## " starts a category.
+# Never weaken an expectation to make a test pass. If one is genuinely wrong, change it and record why in docs/DECISIONS.md.
+
+## brief
+love	❤️	❤️ 😍
+fire	🔥	🔥
+happy	😃	😃 😄
+dog	🐶	🐶 🐕
+coffee	☕	☕
+money	💰	💰 💵
+sad	😢	😢 😞
+party	🎉	🎉 🥳
+
+## bulgarian
+сърце	❤️	❤️
+кафе	☕	☕
+куче	🐶	🐶 🐕
+огън	🔥	🔥
+тъжен	😢	😢
+любов	❤️	❤️
+котка	🐱	🐱 🐈
+бира	🍺	🍺 🍻
+пица	🍕	🍕
+торта	🎂	🎂
+смях	😂	😂 🤣
+слънце	☀️	☀️
+звезда	⭐	⭐ 🌟
+пари	💰	💰
+купон	🎉	🎉 🥳
+мерси	🙏	🙏
+ок	👌	👌 👍
+браво	👏	👏 👍
+обичам	❤️	❤️
+здравей	👋	👋
+червено сърце	❤️	❤️
+палец нагоре	👍	👍
+разбито сърце	💔	💔
+
+## slang
+lol	😂	😂 🤣
+lmao	😂	😂 🤣
+gg	🤝	🤝 🏆
+sus	🤨	🤨 👀
+goat	🐐	🐐
+rofl	🤣	🤣
+omg	😱	😱
+smh	🤦	🤦
+idk	🤷	🤷
+ty	🙏	🙏
+lit	🔥	🔥
+fr	💯	💯
+cringe	😬	😬
+salty	🧂	🧂
+flex	💪	💪
+xoxo	😘	😘
+thx	🙏	🙏
+ok	👌	👌 👍
+slay	💅	💅
+yay	🥳	🥳 🎉
+obsessed	😍	😍 🤩
+
+## typos
+hapy	😃	😃 😄
+cofee	☕	☕
+firre	🔥	🔥
+haert	❤️	❤️
+pizzza	🍕	🍕
+chocolat	🍫	🍫
+birthay	🎂	🎂
+unicron	🦄	🦄
+tumbs up	👍	👍
+smille	😄	😄
+laugth	😂	😂
+кафее	☕	☕
+
+## multi-word
+thumbs up	👍	👍
+thumbs down	👎	👎
+red heart	❤️	❤️
+face with tears	😂	😂
+broken heart	💔	💔
+party popper	🎉	🎉
+crying face	😢	😢 😭
+heart eyes	😍	😍
+rolling eyes	🙄	🙄
+fire truck	🚒	🚒
+ice cream	🍨	🍨 🍦
+hot dog	🌭	🌭
+red apple	🍎	🍎
+green heart	💚	💚
+blue heart	💙	💙
+smiling face	☺️	☺️
+new moon	🌑	🌑
+flag bulgaria	🇧🇬	🇧🇬
+flag germany	🇩🇪	🇩🇪
+love letter	💌	💌
+shooting star	🌠	🌠
+four leaf clover	🍀	🍀
+birthday cake	🎂	🎂
+money bag	💰	💰
+light bulb	💡	💡
+
+## ambiguous
+bank	🏦	🏦 💰
+star	⭐	⭐ 🌟
+cool	😎	😎 🆒
+bat	🦇	🦇
+mouse	🐭	🐭
+ring	💍	💍
+apple	🍎	🍎 🍏
+orange	🍊	🍊 🧡
+hot	🔥	🔥 🥵
+football	⚽	⚽ 🏈
+kiss	💋	💋 😘
+moon	🌙	🌙
+tired	😫	😫 😩
+flower	🌹	🌹 🌸
+water	💧	💧
+
+## common
+cat	🐱	🐱 🐈
+pizza	🍕	🍕
+beer	🍺	🍺 🍻
+wine	🍷	🍷
+cake	🍰	🍰 🎂
+birthday	🎂	🎂
+gift	🎁	🎁
+christmas	🎄	🎄 🎅
+halloween	🎃	🎃
+rocket	🚀	🚀
+car	🚗	🚗
+plane	✈️	✈️
+house	🏠	🏠
+sun	☀️	☀️ 🌞
+rainbow	🌈	🌈
+snow	❄️	❄️ ☃️
+tree	🌳	🌳
+ocean	🌊	🌊
+beach	🏖️	🏖️
+music	🎵	🎵 🎶
+guitar	🎸	🎸
+soccer	⚽	⚽
+basketball	🏀	🏀
+trophy	🏆	🏆
+medal	🥇	🥇 🏅
+phone	☎️	☎️ 📱
+computer	💻	💻
+heart	❤️	❤️
+hug	🤗	🤗 🫂
+clap	👏	👏
+pray	🙏	🙏
+wave	👋	👋
+muscle	💪	💪
+eyes	👀	👀
+think	🤔	🤔
+sleep	😴	😴 💤
+angry	😠	😠 😡
+scared	😱	😱 😨
+surprised	😮	😮 😲
+wink	😉	😉
+nerd	🤓	🤓
+sick	🤒	🤒 🤢
+crazy	🤪	🤪
+poop	💩	💩
+ghost	👻	👻
+skull	💀	💀
+alien	👽	👽
+robot	🤖	🤖
+clown	🤡	🤡
+devil	😈	😈
+angel	👼	👼 😇
+unicorn	🦄	🦄
+horse	🐴	🐴 🐎
+pig	🐷	🐷
+cow	🐮	🐮
+penguin	🐧	🐧
+fish	🐟	🐟 🐠
+butterfly	🦋	🦋
+snake	🐍	🐍
+panda	🐼	🐼
+frog	🐸	🐸
+banana	🍌	🍌
+avocado	🥑	🥑
+burger	🍔	🍔
+fries	🍟	🍟
+taco	🌮	🌮
+sushi	🍣	🍣
+tea	🍵	🍵
+check	✅	✅ ✔️
+warning	⚠️	⚠️
+question	❓	❓
+idea	💡	💡
+key	🔑	🔑
+book	📖	📖 📚
+camera	📷	📷 📸
+movie	🎬	🎬
+game	🎮	🎮
+earth	🌍	🌍
+peace	✌️	✌️ ☮️
+100	💯	💯

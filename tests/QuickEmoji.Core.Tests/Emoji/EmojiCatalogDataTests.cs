@@ -137,8 +137,8 @@ public sealed class EmojiCatalogDataTests
         Assert.True(Catalog.TryGet("😂", out var tears));
         Assert.True(Catalog.TryGet("👍", out var thumbsUp));
 
-        Assert.Contains("lol", tears.Synonyms);
-        Assert.Contains("ок", thumbsUp.Synonyms);
+        Assert.Contains(tears.Synonyms, s => s.Word == "lol" && s.Rank == 1);
+        Assert.Contains(thumbsUp.Synonyms, s => s.Word == "ок" && s.Rank == 2);
         Assert.Contains("thumbsup", thumbsUp.Shortcodes);
         Assert.Contains("палец", thumbsUp.KeywordsBg);
         Assert.Equal(1, tears.PopularityRank);

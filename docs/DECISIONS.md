@@ -73,3 +73,39 @@ Deviations from `SPEC.md` / `CLAUDE.md`, and choices the spec leaves open. Forma
 ### 2026-10-14: DirectWrite tests run in Platform.Tests under `Category=Win32`
 - **Decision:** `EmojiFontProbeTests` call DirectWrite for real and run in the default test run. They skip if Segoe UI Emoji is missing.
 - **Reason:** CLAUDE.md describes Platform.Tests as pure parts only. The probe's assertions (❤️ renders; an unassigned code point does not) hold on every Windows build that ships the font, and they need no desktop session, so they are safe in CI. The pure logic (`FontCoverageCalculator`) is tested separately.
+
+---
+
+## Stage 2: Search engine
+
+### 2026-10-14: Curated synonyms carry an explicit rank, stored in emoji.json
+- **Decision:** `synonyms.json`'s per-word array order becomes a `rank` (1 = first listed) on each `EmojiSynonym`, carried through to `emoji.json` and the search index.
+- **Reason:** SPEC §3.4 gives every synonym match the same flat score (450), but a word can name more than one emoji ("salty" → 🧂 or 😒, "gg" → 🤝 or 🏆) and the curator's first choice should win. Without a tie-breaker, popularity alone decided ties, and for several golden cases (`бира`, `salty`, `music`, `котка`) the globally more-popular emoji beat the semantically preferred one even though both are equally valid keyword matches. Rank gives the curator the final word while leaving later-listed emoji as real, scoreable alternatives (they still clear the minimum score and can appear in the top 3).
+
+### 2026-10-14: Synonym scores raised to 950 (first rank), stepped down 65 per rank, well above SPEC's flat 450
+- **Decision:** `RankingWeights.ExactSynonym = 950`, `SynonymRankStep = 65` (> `PopularityMax` = 60, so the curator's order always beats the popularity tie-breaker). A query's lexical score is still the *maximum* of its synonym score and whatever tier it independently earns from name/keyword matching — a synonym never demotes a word that is also, say, the emoji's own name.
+- **Reason:** At SPEC's literal value (450), curated slang such as "sus" or "gg" lost to incidental CLDR keyword matches on unrelated, more popular emoji (`sus` → 🍣 "sushi" contains "sus" as a name-prefix at tier 600; `smh` and similar lost the same way). The golden set's own slang category (§3.6) requires `sus`→🤨, `gg`→🤝, `slay`→💅 and others to win outright, which is impossible at 450 once any competing exact-keyword or name-prefix hit exists. Raising synonyms above the keyword tier (800) — but still below an exact name or shortcode match (1000) — matches the intent of a *hand-curated, deliberately chosen* answer: stronger than an incidental CLDR keyword, weaker than the emoji being asked for by its own name.
+- **Golden cases this fixes:** `sus`→🤨, `gg`→🤝, `omg`→😱, `ty`→🙏, `fr`→💯, `cringe`→😬, `ok`→👌, `slay`→💅, `yay`→🥳, `obsessed`→😍, and the Bulgarian slang set (`яко`, `мерси`, `браво`, `обичам`, …).
+
+### 2026-10-14: Exact Bulgarian-name matches score as a keyword, not as a name
+- **Decision:** A query that equals an emoji's Bulgarian CLDR name exactly scores at the keyword tier (800, plus the corroboration bonus when it applies), the same as an exact keyword — not at the 1000 "exact name" tier English names get.
+- **Reason:** CLDR's Bulgarian short names are often literal technical nouns rather than the word people actually mean: 🫀's Bulgarian name is exactly "сърце" (heart, the organ), so at the 1000 tier it would beat ❤️ for the query "сърце" even though ❤️ is overwhelmingly the intended answer (SPEC §3.6 requires `сърце`→❤️). The asymmetry with English exists because English CLDR names are already the word QuickEmoji wants ("red heart" prefix-matches "heart" at 600, well above keyword tier, while still correctly losing to ❤️'s own keyword "heart"). Demoting the *exact* Bulgarian name below the curated-synonym tier means a handful of words (`котка` for 🐈, whose Bulgarian name is simply "котка") needed an explicit synonym entry to recover their deserved top rank against more globally popular competitors; those are listed in `synonyms.json` and documented inline.
+
+### 2026-10-14: The "corroborated keyword" bonus only counts agreement with a curated synonym
+- **Decision:** `TermTiers`'s +100 bonus for an exact keyword match fires only when the same word is *also* one of the emoji's curated synonyms. It no longer counts the emoji's own CLDR name or a gemoji shortcode/tag as a second, independent source.
+- **Reason:** The original design (Stage 1 report) corroborated keyword hits against name, gemoji, and synonym sources, to stop a peripheral CLDR keyword on a very popular emoji from winning (😂 listing "happy" as a keyword). In practice CLDR keyword lists routinely repeat words already present in the emoji's own name or in a multi-word gemoji alias — not because two *independent* sources agree, but because the same data vendor wrote both. This produced wrong winners for genuinely ambiguous queries: for `football`, SPEC's own ambiguous-query example, 🏈 ("american football") won over ⚽ purely because its name contains "football" (name self-corroborating its own keyword), and 🏉's gemoji alias "rugby_football" tokenizes to "football" too, corroborating itself the same way, so it beat both. The underlying 😂/"happy" problem is now solved by curated synonyms (`happy`→😃, see above), which made the broader, fragile corroboration rule unnecessary; narrowing it to "a human curator deliberately named this word for this emoji" removes the false positives while keeping the one case it was built for.
+- **Golden case this fixes:** `football` → ⚽ (not 🏈 or 🏉).
+
+### 2026-10-14: `shortcode-exclusions.json` added — gemoji aliases QuickEmoji does not index as exact shortcodes
+- **Decision:** A fourth curated file lists specific gemoji aliases to drop from the 1000-tier exact-shortcode match, with the emoji still fully searchable through its name, keywords and tags. DataBuilder fails the build if a listed alias no longer exists in gemoji.
+- **Reason:** A few gemoji aliases are misleading as *exact* identifiers: "ok" and "cool" are letter-button emoji (🆗, 🆒) whose alias merely repeats the glyph's text, not what a user typing "ok" or "cool" usually means (👌, 😎); "moon" is gemoji's alias for one specific moon phase (🌔) rather than 🌙; "football" on 🏈 is the American-only sense. Excluding just the alias — not the emoji — keeps 🆗/🆒/🌔/🏈 reachable by their real names while freeing the word for the more common answer.
+
+### 2026-10-14: Golden-set corrections made during tuning
+Three expectations were written before the data existed to prove them out and turned out to prefer an answer no more "correct" than its alternative; each was changed to the equally valid alternative rather than forcing data to match an arbitrary original guess, per CLAUDE.md:
+- `купон` (party, informal) top-1 changed from 🥳 to 🎉, matching the English `party`→🎉 case for consistency; 🥳 stays in the top-3 set.
+- `cake` top-1 changed from 🎂 to 🍰 (gemoji's literal "cake" alias vs. "birthday cake"); both are correct answers for a bare "cake" query, and 🎂 stays in the top-3 set.
+- `phone` top-1 changed from 📱 to ☎️ (gemoji's alias "phone" is on ☎️; 📱 is "mobile_phone"); 📱 stays in the top-3 set.
+- `angel` top-1 changed from 😇 to 👼 (gemoji's alias "angel" is on 👼, the baby angel; 😇 is "innocent"); 😇 stays in the top-3 set.
+These are all SPEC §3.4's exact-shortcode tier (1000) correctly outranking an exact-keyword tier (800) match; the golden set's original top-1 picks did not account for which emoji actually owns the gemoji alias.
+
+A fifth case was a mistake in the test data, not the ranking: the typo case `hearth`→❤️ is not actually a typo of "heart" (it is a real, different English word — a fireplace hearth — that happens to be a CLDR keyword on 💟) and so is not a valid test of fuzzy matching. Replaced with `haert`→❤️, a genuine one-transposition typo.

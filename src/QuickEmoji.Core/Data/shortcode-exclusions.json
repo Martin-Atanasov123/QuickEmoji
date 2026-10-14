@@ -1,0 +1,15 @@
+// gemoji aliases that QuickEmoji does not index as exact shortcodes (the 1000 tier).
+// The emoji stay findable through their names and keywords. Each entry is explained in docs/DECISIONS.md.
+// DataBuilder fails if an alias listed here no longer exists in gemoji.
+{
+  // Letter buttons: the alias only repeats the visible text, while the word means something else.
+  "🆗": ["ok"],
+  "🆒": ["cool"],
+  "🆙": ["up"],
+
+  // One specific moon phase; "moon" means 🌙.
+  "🌔": ["moon"],
+
+  // American usage; QuickEmoji's English and Bulgarian users mean association football (⚽).
+  "🏈": ["football"]
+}

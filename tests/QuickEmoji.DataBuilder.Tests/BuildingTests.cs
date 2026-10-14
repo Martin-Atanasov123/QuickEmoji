@@ -67,9 +67,11 @@ public sealed class BuildingTests
         Assert.Equal("❤️", heart.Emoji);
         Assert.Equal("red heart", heart.Name);
         Assert.Equal("червено сърце", heart.NameBg);
-        Assert.Equal(["love", "heart", "romance"], heart.Keywords);
+        Assert.Equal(["love", "heart"], heart.Keywords);
+        Assert.Equal(["love", "romance"], heart.Tags);
         Assert.Equal(["heart"], heart.Shortcodes);
-        Assert.Equal(["ily"], heart.Synonyms);
+        Assert.Equal("ily", Assert.Single(heart.Synonyms!).Word);
+        Assert.Equal(1, heart.Synonyms![0].Rank);
         Assert.Equal(1, heart.Popularity);
 
         var uncovered = data.Emoji[1];
@@ -143,7 +145,8 @@ public sealed class BuildingTests
     private static EmojiDataFile Assemble(
         IReadOnlyList<EmojiTestRecord> records,
         IReadOnlyList<(string, IReadOnlyList<string>)>? synonyms = null,
-        IReadOnlyList<string>? popularity = null)
+        IReadOnlyList<string>? popularity = null,
+        IReadOnlyDictionary<string, IReadOnlyList<string>>? exclusions = null)
     {
         var english = new Dictionary<string, CldrAnnotation>(StringComparer.Ordinal)
         {
@@ -157,7 +160,7 @@ public sealed class BuildingTests
         {
             ["❤"] = new(["heart"], ["love", "romance"]),
         };
-        var sources = new SourceData(records, english, bulgarian, gemoji, synonyms ?? [], popularity ?? []);
+        var sources = new SourceData(records, english, bulgarian, gemoji, synonyms ?? [], popularity ?? [], exclusions ?? new Dictionary<string, IReadOnlyList<string>>());
         return EmojiDataAssembler.Assemble(sources, new EmojiDataSources { EmojiTest = "18.0", Cldr = "48.2.3", Gemoji = "4.1.0" });
     }
 }

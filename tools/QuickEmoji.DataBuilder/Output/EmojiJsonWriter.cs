@@ -52,7 +52,10 @@ internal static class EmojiJsonWriter
         AddIf(fields, "shortcodes", Array(r.Shortcodes));
         AddIf(fields, "keywords", Array(r.Keywords));
         AddIf(fields, "keywordsBg", Array(r.KeywordsBg));
-        AddIf(fields, "synonyms", Array(r.Synonyms));
+        AddIf(fields, "tags", Array(r.Tags));
+        AddIf(fields, "synonyms", r.Synonyms is null
+            ? null
+            : "[" + string.Join(",", r.Synonyms.Select(s => "{" + Field("word", Quote(s.Word)) + "," + Field("rank", s.Rank.ToString(CultureInfo.InvariantCulture)) + "}")) + "]");
         AddIf(fields, "popularity", r.Popularity?.ToString(CultureInfo.InvariantCulture));
         AddIf(fields, "variants", r.Variants is null ? null : "[" + string.Join(",", r.Variants.Select(Variant)) + "]");
         return "{" + string.Join(",", fields) + "}";
