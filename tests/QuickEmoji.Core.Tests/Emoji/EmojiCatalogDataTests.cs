@@ -149,11 +149,17 @@ public sealed class EmojiCatalogDataTests
     [Fact]
     public void Index_loads_within_150_ms()
     {
-        // Warm-up excludes one-time JIT of the test host itself; the budget applies to each subsequent load.
-        _ = EmojiCatalogLoader.LoadEmbedded();
+        // .NET's tiered JIT needs more than one call before a method reaches its optimized (Tier 1) form; a
+        // single warm-up call left this test flaky on loaded CI hardware (still running unoptimized Tier 0 code,
+        // or caught by a GC/scheduler pause). 10 warm-up loads give JIT tiering room to settle; 11 measured loads
+        // and the median (not the mean) keep one remaining GC-pause outlier from failing the budget by itself.
+        for (var i = 0; i < 10; i++)
+        {
+            _ = EmojiCatalogLoader.LoadEmbedded();
+        }
 
         var timings = new List<double>();
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < 11; i++)
         {
             var stopwatch = Stopwatch.StartNew();
             _ = EmojiCatalogLoader.LoadEmbedded();
