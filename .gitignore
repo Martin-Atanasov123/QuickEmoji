@@ -8,3 +8,4 @@ TestResults/
 .vscode/
 *.binlog
 tools/QuickEmoji.DataBuilder/cache/
+.claude/

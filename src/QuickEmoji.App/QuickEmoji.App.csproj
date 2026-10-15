@@ -7,6 +7,7 @@
     <RootNamespace>QuickEmoji.App</RootNamespace>
     <AssemblyName>QuickEmoji</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
 
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
@@ -25,7 +26,14 @@
     <ApplicationDefinition Include="QuickEmojiApplication.xaml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Assets\*.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>

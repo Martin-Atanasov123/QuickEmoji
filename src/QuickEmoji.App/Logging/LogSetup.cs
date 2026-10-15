@@ -26,6 +26,9 @@ internal static class LogSetup
                 outputTemplate: OutputTemplate,
                 fileSizeLimitBytes: MaxFileBytes,
                 rollOnFileSizeLimit: true,
-                retainedFileCountLimit: RetainedFiles)
+                retainedFileCountLimit: RetainedFiles,
+                // SPEC §8 allows a second process to run briefly (it logs a line or two before signalling the
+                // first instance and exiting); without shared access its writes to this file are silently lost.
+                shared: true)
             .CreateLogger();
 }

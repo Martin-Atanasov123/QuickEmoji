@@ -4,10 +4,12 @@
     <SupportedOSPlatformVersion>$(QuickEmojiMinWindows)</SupportedOSPlatformVersion>
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>QuickEmoji.Platform.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\QuickEmoji.Platform\QuickEmoji.Platform.csproj" />

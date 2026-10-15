@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="QuickEmoji.App.Toast.ToastWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Border
+      x:Name="RootBorder"
+      Padding="14,10"
+      CornerRadius="8"
+      Background="{ThemeResource SolidBackgroundFillColorBaseBrush}">
+    <TextBlock x:Name="MessageText" FontSize="13" TextWrapping="Wrap" />
+  </Border>
+</Window>

@@ -23,12 +23,22 @@ public static class Program
                 System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture,
                 options);
 
+            var singleInstance = new SingleInstanceGuard();
+            if (!singleInstance.IsFirstInstance)
+            {
+                // SPEC §8: a second launch signals the first instance, then exits.
+                Log.Information("Another instance is already running; signalling it and exiting");
+                singleInstance.SignalExistingInstanceAndExit();
+                singleInstance.Dispose();
+                return 0;
+            }
+
             WinRT.ComWrappersSupport.InitializeComWrappers();
             Application.Start(callbackParams =>
             {
                 SynchronizationContext.SetSynchronizationContext(
                     new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-                _ = new QuickEmojiApplication(options);
+                _ = new QuickEmojiApplication(options, singleInstance);
             });
 
             Log.Information("QuickEmoji exited normally");

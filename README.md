@@ -2,7 +2,7 @@
 
 A Windows tray utility: press a global hotkey, type a word, press Enter, and the best emoji for that word appears where you were typing.
 
-> **Status:** Stage 2 (search engine). The app starts and exits. The emoji catalog (Emoji 18.0, English and Bulgarian keywords) and the ranked search engine are built and tested (100% of 184 golden cases, p95 latency ≈ 0.1 ms). The hotkey, popup and insertion arrive in later stages. See [docs/PLAN.md](docs/PLAN.md).
+> **Status:** Stage 3 (hotkey, popup, tray) — awaiting manual verification on a real desktop. Press **Win+Shift+E** anywhere, type a word, and the popup shows the top 3 matches. Enter currently **copies** the pick to the clipboard and shows a toast (real insertion arrives in Stage 4). See [docs/PLAN.md](docs/PLAN.md) and [docs/TESTING.md](docs/TESTING.md#stage-3-human-gate) for the full manual test matrix.
 
 ## Build from source
 
@@ -13,6 +13,20 @@ dotnet build QuickEmoji.sln -c Debug
 dotnet test --filter "Category!=E2E"
 dotnet run --project src/QuickEmoji.App
 ```
+
+## Usage
+
+| Key | Action |
+|---|---|
+| **Win+Shift+E** | Open the popup near your text caret (press again to close) |
+| Type | Search updates on every keystroke |
+| **Enter** | Copy the selected (or best) match to the clipboard, close |
+| **Alt+1 / Alt+2 / Alt+3** | Copy that row directly |
+| **Ctrl+Enter** | Copy the selected row without changing the selection |
+| **↑ / ↓**, Tab / Shift+Tab | Move the selection (wraps) |
+| **Esc** | Close, no side effects |
+
+A tray icon (right-click for Open / Settings / Pause hotkey / Quit) is always available; left-click opens the popup centered.
 
 ## Emoji data
 

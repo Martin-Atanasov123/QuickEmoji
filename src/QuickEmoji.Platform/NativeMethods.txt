@@ -6,3 +6,49 @@ IDWriteFontFamily
 IDWriteFont
 IDWriteFontFace
 IDWriteTextAnalyzer
+
+// Hotkey: message-only window and RegisterHotKey (Hotkeys/*.cs)
+RegisterClassEx
+CreateWindowEx
+HWND_MESSAGE
+DefWindowProc
+DestroyWindow
+RegisterHotKey
+UnregisterHotKey
+GetMessage
+TranslateMessage
+DispatchMessage
+PostQuitMessage
+PostMessage
+WM_HOTKEY
+WM_APP
+
+// Target capture: foreground window, caret rect, process (Targeting/*.cs)
+GetForegroundWindow
+SetForegroundWindow
+GetWindowThreadProcessId
+GetGUIThreadInfo
+GetAsyncKeyState
+
+// Elevation detection (Security/IntegrityLevelReader.cs)
+OpenProcess
+OpenProcessToken
+GetTokenInformation
+GetSidSubAuthority
+GetSidSubAuthorityCount
+TOKEN_MANDATORY_LABEL
+SECURITY_MANDATORY_UNTRUSTED_RID
+SECURITY_MANDATORY_LOW_RID
+SECURITY_MANDATORY_MEDIUM_RID
+SECURITY_MANDATORY_HIGH_RID
+SECURITY_MANDATORY_SYSTEM_RID
+
+// Popup placement: monitor geometry and DPI (Display/*.cs)
+MonitorFromWindow
+MonitorFromPoint
+GetMonitorInfo
+GetCursorPos
+GetDpiForMonitor
+DwmSetWindowAttribute
+DWMWINDOWATTRIBUTE
+DWM_WINDOW_CORNER_PREFERENCE

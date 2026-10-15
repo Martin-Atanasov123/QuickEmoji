@@ -63,5 +63,29 @@ flowchart LR
 - `RankingWeights` is the single source of every scoring constant (SPEC's own rule); `docs/DECISIONS.md` records where Stage 2's tuning departs from SPEC's literal numbers and why.
 - `tests/data/ranking-golden.tsv` is the contract: 184 cases, 100% top-1 and 100% top-3-set.
 
+## Hotkey, popup, tray (Stage 3)
+
+```mermaid
+flowchart LR
+    MOW["MessageOnlyWindow<br/>own thread + message loop"] --> HS["HotkeyService<br/>RegisterHotKey, Invoke-marshaled"]
+    HS -- "HotkeyPressed<br/>(Platform's own thread)" --> QA["QuickEmojiApplication<br/>dispatcher.TryEnqueue"]
+    QA --> TC["TargetCapture<br/>foreground hwnd, caret, integrity"]
+    TC --> PW["PopupWindow.Show"]
+    QA -- "left-click / Open / Settings /<br/>second instance" --> PW
+    PW --> MQ["MonitorQuery + PopupPlacement"]
+    PW --> PVM["PopupViewModel<br/>Query, Results, SelectedIndex"]
+    PVM --> ESE["EmojiSearchEngine (Stage 2)"]
+    PVM -- "Enter / Alt+1-3 / click /<br/>Ctrl+Enter" --> CG["ClipboardGuard.Copy"]
+    CG --> TW["ToastWindow.Show"]
+    QA --> TIC["TrayIconController<br/>H.NotifyIcon"]
+```
+
+- `MessageOnlyWindow` owns a dedicated background thread and message loop; `RegisterHotKey`/`UnregisterHotKey` must run on that exact thread (`ERROR_WINDOW_OF_OTHER_THREAD` otherwise), so `HotkeyService` marshals onto it via `MessageOnlyWindow.Invoke`. See docs/DECISIONS.md for two real bugs found building this (a private-message collision with `WM_CREATE`, and the thread-affinity requirement itself).
+- `HotkeyService.HotkeyPressed` fires on Platform's own thread, not the UI thread — Platform has no WinUI dependency, so App marshals to its `DispatcherQueue` itself.
+- `TargetContext` is captured synchronously inside the hotkey handler — the only moment the foreground window is guaranteed to be the one the user was typing into (SPEC §4.1).
+- `PopupWindow` and `ToastWindow` are each created once at startup and shown/hidden thereafter (never re-created — SPEC's 50 ms budget depends on this). Both use `WindowChrome.ApplyRoundedCorners` (a direct `DwmSetWindowAttribute` call Platform exposes, since WinUI 3 has no managed API for it on a borderless window) and `DesktopAcrylicBackdrop` with a solid-color fallback.
+- `ClipboardGuard` takes an `IClipboard`; `SystemClipboard` is the real WinRT implementation, used only by the running app (it needs the WinUI app's own STA thread — see docs/DECISIONS.md).
+- Stage 3's commit path is copy-to-clipboard-and-toast for every keymap action (Enter, Alt+1-3, click, Ctrl+Enter); Stage 4 gives Enter/Alt+N/click real insertion while Ctrl+Enter stays copy-only, per SPEC §2.
+
 ## Startup (Stage 0)
-`Program.Main` parses the command line, configures Serilog (`%LOCALAPPDATA%\QuickEmoji\logs`, 7 × 1 MB), then starts WinUI with a `DispatcherQueueSynchronizationContext`. `QuickEmojiApplication.OnLaunched` creates the window. `--startup-check` exits as soon as initialisation finishes.
+`Program.Main` parses the command line, configures Serilog (`%LOCALAPPDATA%\QuickEmoji\logs`, 7 × 1 MB, shared across the brief overlap a second single-instance launch can create), creates the `SingleInstanceGuard` (SPEC §8), then starts WinUI with a `DispatcherQueueSynchronizationContext`. `QuickEmojiApplication.OnLaunched` wires the catalog, search engine, hotkey, popup, toast and tray together. `--startup-check` exits as soon as the full composition is up.
