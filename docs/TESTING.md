@@ -61,7 +61,7 @@ Tests use xUnit v3 on Microsoft Testing Platform (see DECISIONS.md).
 |---|---|
 | `HotkeyValidatorTests`, `HotkeyGestureTests` | SPEC §5: a gesture needs Ctrl, Alt or Win; Ctrl+Alt without Win warns about AltGr; display formatting. |
 | `HotkeyServiceTests` (Win32) | Real `RegisterHotKey`/`UnregisterHotKey`: registration, conflict detection between two services, `TestRegister` probing without taking over the combination, `Paused` releasing and re-acquiring it, replacing a registration, `Dispose` releasing it, and `WM_HOTKEY` actually reaching `HotkeyPressed`. |
-| `IntegrityLevelReaderTests` (Win32) | Reads the current (unelevated) process's own integrity level as Medium; an invalid or nonexistent PID returns null rather than throwing. |
+| `IntegrityLevelReaderTests` (Win32) | Reads the current process's own integrity level without failing, agrees with `WindowsPrincipal.IsInRole(Administrator)` on whether it's elevated (not a fixed expected level — CI runners are commonly elevated where a dev desktop is not), is consistent across two reads, and returns null rather than throwing for an invalid or nonexistent PID. |
 | `TargetCaptureTests` (Win32) | A real capture is internally consistent; `IsElevatedOrUnknown` treats a null level the same as High/System; `IsValid` reflects whether a foreground window was found. |
 | `PopupPlacementTests` | Near-caret placement, flipping above when there's no room below, falling back to the cursor when there's no caret, centering, clamping to all four work-area edges, and DPI scaling at 100/150/200% — all pure, no Win32. |
 | `MonitorQueryTests` (Win32) | Real monitor/DPI/cursor queries return sane values, including for an off-screen point. |

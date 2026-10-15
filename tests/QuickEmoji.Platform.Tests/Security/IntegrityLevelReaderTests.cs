@@ -1,3 +1,4 @@
+using System.Security.Principal;
 using QuickEmoji.Platform.Security;
 
 namespace QuickEmoji.Platform.Tests.Security;
@@ -6,13 +7,33 @@ namespace QuickEmoji.Platform.Tests.Security;
 public sealed class IntegrityLevelReaderTests
 {
     [Fact]
-    public void Reads_the_current_processs_own_integrity_level()
+    public void Reads_the_current_processs_own_integrity_level_without_failing()
     {
         var level = IntegrityLevelReader.TryRead(Environment.ProcessId);
 
-        // CI and interactive dev machines run the test host unelevated; this fails loudly if that ever changes
-        // so a silently-elevated test run doesn't mask a real detection bug.
-        Assert.Equal(IntegrityLevel.Medium, level);
+        // Not a fixed expected level: whether the test host itself runs elevated varies by machine (a normal
+        // dev desktop is unelevated; a CI runner's default account commonly is). What must always hold is that
+        // reading our own process succeeds at all.
+        Assert.NotNull(level);
+    }
+
+    [Fact]
+    public void Agrees_with_WindowsPrincipal_on_whether_the_current_process_is_elevated()
+    {
+        var level = IntegrityLevelReader.TryRead(Environment.ProcessId);
+        var isAdministrator = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
+
+        Assert.NotNull(level);
+        Assert.Equal(isAdministrator, level is IntegrityLevel.High or IntegrityLevel.System);
+    }
+
+    [Fact]
+    public void Reading_the_same_process_twice_gives_the_same_level()
+    {
+        var first = IntegrityLevelReader.TryRead(Environment.ProcessId);
+        var second = IntegrityLevelReader.TryRead(Environment.ProcessId);
+
+        Assert.Equal(first, second);
     }
 
     [Fact]
