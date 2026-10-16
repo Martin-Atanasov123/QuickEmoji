@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="QuickEmoji.App.FirstRun.FirstRunWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <StackPanel x:Name="RootPanel" Padding="24" Spacing="16">
+    <TextBlock Text="Welcome to QuickEmoji" FontSize="20" FontWeight="SemiBold" />
+    <TextBlock TextWrapping="Wrap" Text="Press the hotkey below anywhere to search for an emoji and insert it where you're typing." />
+
+    <Border Padding="12" CornerRadius="6" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+      <TextBlock x:Name="HotkeyText" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" />
+    </Border>
+
+    <StackPanel Spacing="4">
+      <TextBlock Text="Try it now — click into the field below, then press the hotkey:" TextWrapping="Wrap" />
+      <TextBox x:Name="TestField" PlaceholderText="Click here, then press the hotkey…" />
+    </StackPanel>
+
+    <CheckBox x:Name="LaunchAtStartupCheckBox" Content="Launch QuickEmoji at startup" />
+
+    <Button Content="Got it" Click="GotIt_Click" Style="{ThemeResource AccentButtonStyle}" HorizontalAlignment="Right" />
+  </StackPanel>
+</Window>

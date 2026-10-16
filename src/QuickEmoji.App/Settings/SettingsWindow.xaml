@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="QuickEmoji.App.Settings.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:QuickEmoji.App.Settings">
+
+  <Grid x:Name="RootGrid" Padding="0">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Pivot x:Name="SectionsPivot" Grid.Row="0">
+
+      <!-- General: SPEC §6.2 — hotkey recorder, launch at startup, popup position. -->
+      <PivotItem Header="General">
+        <StackPanel Padding="16" Spacing="16">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Hotkey" FontWeight="SemiBold" />
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="RecordHotkeyButton" Content="{x:Bind ViewModel.HotkeyDisplay, Mode=OneWay}" Click="RecordHotkeyButton_Click" PreviewKeyDown="RecordHotkeyButton_PreviewKeyDown" />
+              <TextBlock Text="Recording — press a key combination…" Visibility="{x:Bind ViewModel.IsRecordingHotkey, Mode=OneWay}" VerticalAlignment="Center" Opacity="0.7" />
+            </StackPanel>
+            <TextBlock Text="{x:Bind ViewModel.HotkeyMessage, Mode=OneWay}" Foreground="{ThemeResource SystemFillColorCautionBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+
+          <CheckBox Content="Launch at startup" IsChecked="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Popup position" FontWeight="SemiBold" />
+            <RadioButtons x:Name="PopupPositionButtons" SelectionChanged="PopupPositionButtons_SelectionChanged">
+              <RadioButton Content="Near text caret" Tag="NearCaret" />
+              <RadioButton Content="Near cursor" Tag="NearCursor" />
+              <RadioButton Content="Centered on the active monitor" Tag="Centered" />
+            </RadioButtons>
+          </StackPanel>
+        </StackPanel>
+      </PivotItem>
+
+      <!-- Appearance: SPEC §6.2 — theme. -->
+      <PivotItem Header="Appearance">
+        <StackPanel Padding="16" Spacing="16">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Theme" FontWeight="SemiBold" />
+            <RadioButtons x:Name="ThemeButtons" SelectionChanged="ThemeButtons_SelectionChanged">
+              <RadioButton Content="System (default)" Tag="System" />
+              <RadioButton Content="Light" Tag="Light" />
+              <RadioButton Content="Dark" Tag="Dark" />
+            </RadioButtons>
+          </StackPanel>
+        </StackPanel>
+      </PivotItem>
+
+      <!-- Search: SPEC §6.2 — keyword languages, preferred skin tone, max emoji version (advanced). -->
+      <PivotItem Header="Search">
+        <StackPanel Padding="16" Spacing="16">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Keyword languages" FontWeight="SemiBold" />
+            <CheckBox Content="English" IsChecked="{x:Bind ViewModel.SearchEnglish, Mode=TwoWay}" />
+            <CheckBox Content="Български" IsChecked="{x:Bind ViewModel.SearchBulgarian, Mode=TwoWay}" />
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Preferred skin tone" FontWeight="SemiBold" />
+            <RadioButtons x:Name="SkinToneButtons" SelectionChanged="SkinToneButtons_SelectionChanged">
+              <RadioButton Content="Default (yellow)" Tag="None" />
+              <RadioButton Content="Light" Tag="Light" />
+              <RadioButton Content="Medium-light" Tag="MediumLight" />
+              <RadioButton Content="Medium" Tag="Medium" />
+              <RadioButton Content="Medium-dark" Tag="MediumDark" />
+              <RadioButton Content="Dark" Tag="Dark" />
+            </RadioButtons>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Maximum emoji version (advanced)" FontWeight="SemiBold" />
+            <TextBox Width="120" PlaceholderText="auto" Text="{x:Bind ViewModel.MaxEmojiVersionOverrideText, Mode=TwoWay}" />
+          </StackPanel>
+
+          <Button Content="Clear usage history" Click="ClearUsageHistory_Click" />
+        </StackPanel>
+      </PivotItem>
+
+      <!-- Insertion: SPEC §6.2 — default method, per-app overrides, clipboard restore delay. -->
+      <PivotItem Header="Insertion">
+        <StackPanel Padding="16" Spacing="16">
+          <StackPanel Spacing="4">
+            <TextBlock Text="Default method" FontWeight="SemiBold" />
+            <RadioButtons x:Name="DefaultMethodButtons" SelectionChanged="DefaultMethodButtons_SelectionChanged">
+              <RadioButton Content="Auto (Unicode injection)" Tag="UnicodeInjection" />
+              <RadioButton Content="Clipboard" Tag="ClipboardPaste" />
+            </RadioButtons>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Clipboard restore delay (ms)" FontWeight="SemiBold" />
+            <NumberBox Width="120" Minimum="0" Maximum="5000" SpinButtonPlacementMode="Inline" Value="{x:Bind ViewModel.ClipboardRestoreDelayMs, Mode=TwoWay}" />
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Per-app overrides" FontWeight="SemiBold" />
+            <ListView x:Name="OverridesList" ItemsSource="{x:Bind ViewModel.PerAppOverrides}" SelectionMode="None">
+              <ListView.ItemTemplate>
+                <DataTemplate x:DataType="local:AppOverrideRowViewModel">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox Width="160" PlaceholderText="process name" Text="{x:Bind ProcessName, Mode=TwoWay}" />
+                    <ComboBox Width="140" SelectedItem="{x:Bind MethodText, Mode=TwoWay}">
+                      <x:String>UnicodeInjection</x:String>
+                      <x:String>ClipboardPaste</x:String>
+                      <x:String>Copy</x:String>
+                    </ComboBox>
+                    <ComboBox Width="110" SelectedItem="{x:Bind PasteKeysText, Mode=TwoWay}">
+                      <x:String>CtrlV</x:String>
+                      <x:String>ShiftInsert</x:String>
+                    </ComboBox>
+                    <Button Content="Remove" Click="RemoveOverrideRow_Click" Tag="{x:Bind}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ListView.ItemTemplate>
+            </ListView>
+            <Button Content="Add override" Click="AddOverrideRow_Click" />
+          </StackPanel>
+        </StackPanel>
+      </PivotItem>
+
+      <!-- About: SPEC §6.2 — version, log folder, diagnostics, licences. -->
+      <PivotItem Header="About">
+        <StackPanel Padding="16" Spacing="12">
+          <TextBlock Text="{x:Bind ViewModel.AppVersion}" />
+          <Button Content="Open log folder" Click="OpenLogFolder_Click" />
+          <Button Content="Copy diagnostics" Click="CopyDiagnostics_Click" />
+          <TextBlock Text="Licences: see THIRD_PARTY_NOTICES.md next to the installed app." TextWrapping="Wrap" Opacity="0.8" />
+        </StackPanel>
+      </PivotItem>
+    </Pivot>
+
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16" Spacing="8">
+      <Button Content="Save" Click="Save_Click" Style="{ThemeResource AccentButtonStyle}" />
+      <Button Content="Cancel" Click="Cancel_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

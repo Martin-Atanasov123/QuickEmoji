@@ -2,7 +2,7 @@
 
 A Windows tray utility: press a global hotkey, type a word, press Enter, and the best emoji for that word appears where you were typing.
 
-> **Status:** Stage 3 (hotkey, popup, tray) — awaiting manual verification on a real desktop. Press **Win+Shift+E** anywhere, type a word, and the popup shows the top 3 matches. Enter currently **copies** the pick to the clipboard and shows a toast (real insertion arrives in Stage 4). See [docs/PLAN.md](docs/PLAN.md) and [docs/TESTING.md](docs/TESTING.md#stage-3-human-gate) for the full manual test matrix.
+> **Status:** Stage 5 (settings, startup, first run, personalization) — the hotkey, popup, real insertion (Unicode injection or clipboard paste, with an elevated-target fallback to copy), and the Settings/first-run windows are all implemented; the full manual test matrix for Stages 3-5 is still awaiting verification on a real desktop. Press **Win+Shift+E** anywhere, type a word, and the popup shows the top 3 matches; Enter inserts the pick directly where you were typing. See [docs/PLAN.md](docs/PLAN.md) and [docs/TESTING.md](docs/TESTING.md) for the full manual test matrices.
 
 ## Build from source
 
@@ -20,13 +20,15 @@ dotnet run --project src/QuickEmoji.App
 |---|---|
 | **Win+Shift+E** | Open the popup near your text caret (press again to close) |
 | Type | Search updates on every keystroke |
-| **Enter** | Copy the selected (or best) match to the clipboard, close |
-| **Alt+1 / Alt+2 / Alt+3** | Copy that row directly |
-| **Ctrl+Enter** | Copy the selected row without changing the selection |
+| **Enter** | Insert the selected (or best) match where you were typing, close |
+| **Alt+1 / Alt+2 / Alt+3** | Insert that row directly |
+| **Ctrl+Enter** | Copy the selected row to the clipboard instead of inserting it |
 | **↑ / ↓**, Tab / Shift+Tab | Move the selection (wraps) |
 | **Esc** | Close, no side effects |
 
-A tray icon (right-click for Open / Settings / Pause hotkey / Quit) is always available; left-click opens the popup centered.
+A tray icon (right-click for Open / Settings / Pause hotkey / Quit) is always available; left-click opens the popup centered (with no insertion target, Enter copies instead — SPEC §6.3).
+
+The first time you run QuickEmoji, a short welcome window shows your hotkey, lets you try it immediately, and asks whether to launch at Windows startup (off by default). Settings (tray menu → Settings) covers the hotkey, popup position, theme, search languages, preferred skin tone, per-app insertion overrides, and a "Copy diagnostics" button for bug reports.
 
 ## Emoji data
 

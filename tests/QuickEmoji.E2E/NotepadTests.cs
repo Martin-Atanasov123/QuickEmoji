@@ -30,6 +30,12 @@ public sealed class NotepadTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        // Stage 5 added a first-run welcome window that pops up (and steals focus) whenever settings.json does
+        // not exist yet. Without this, whether these tests see that window depends on whatever state the host
+        // machine happens to be in (e.g. it appeared and corrupted every assertion below after a manual
+        // --startup-check run on this machine had deleted its own settings.json) — ensure it is never first-run.
+        EnsureSettingsFileExists();
+
         _quickEmoji = Process.Start(new ProcessStartInfo(AppUnderTest.LocateExecutable()) { UseShellExecute = false })
             ?? throw new InvalidOperationException("Failed to start QuickEmoji.exe.");
         // The hotkey is registered during OnLaunched, which the process needs a moment to reach.
@@ -224,6 +230,19 @@ public sealed class NotepadTests : IAsyncLifetime
     }
 
     private static string GetText(AutomationElement editor) => editor.Patterns.Value.Pattern.Value.ValueOrDefault ?? "";
+
+    private static void EnsureSettingsFileExists()
+    {
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "QuickEmoji");
+        var settingsFile = Path.Combine(directory, "settings.json");
+        if (!File.Exists(settingsFile))
+        {
+            Directory.CreateDirectory(directory);
+            // An empty object is enough: QuickEmojiApplication only checks the file's existence to decide
+            // whether this is a first run, and SettingsStore falls back to defaults for every field anyway.
+            File.WriteAllText(settingsFile, "{}");
+        }
+    }
 
     public ValueTask DisposeAsync()
     {

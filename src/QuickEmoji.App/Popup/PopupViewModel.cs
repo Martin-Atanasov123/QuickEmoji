@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
+using QuickEmoji.Core.Emoji;
 using QuickEmoji.Core.Search;
+using QuickEmoji.Core.Settings;
 
 namespace QuickEmoji.App.Popup;
 
@@ -11,7 +13,11 @@ namespace QuickEmoji.App.Popup;
 /// </summary>
 public sealed partial class PopupViewModel : ObservableObject
 {
-    private readonly EmojiSearchEngine _engine;
+    /// <summary>
+    /// Not readonly: Settings → Search → "max emoji version (advanced)" rebuilds the filtered catalog (and so a
+    /// new engine) on save; the popup itself is never recreated (CLAUDE.md), only this reference swapped.
+    /// </summary>
+    private EmojiSearchEngine _engine;
 
     /// <summary>Enter / Alt+1-3 / row click: real insertion (Stage 4) or, with no target, copy (SPEC §6.3 tray mode).</summary>
     private readonly Func<string, Task> _onCommit;
@@ -27,6 +33,16 @@ public sealed partial class PopupViewModel : ObservableObject
     }
 
     public ObservableCollection<ResultRowViewModel> Results { get; } = [];
+
+    /// <summary>
+    /// Live settings (SPEC §6.2's "Search" languages and preferred skin tone): the composition root updates this
+    /// in place when the user saves changes in the Settings window, so the next search or reopen picks them up
+    /// without recreating the popup (CLAUDE.md: never re-create it).
+    /// </summary>
+    public AppSettings Settings { get; set; } = AppSettings.Default;
+
+    /// <summary>Swaps the search engine in place after Settings rebuilds the filtered catalog.</summary>
+    public void UpdateEngine(EmojiSearchEngine engine) => _engine = engine;
 
     [ObservableProperty]
     public partial string Query { get; set; } = "";
@@ -98,11 +114,12 @@ public sealed partial class PopupViewModel : ObservableObject
 
     private void RunSearch()
     {
-        var results = _engine.Search(Query);
+        var results = _engine.Search(Query, new SearchOptions(Settings.Languages));
         Results.Clear();
         for (var i = 0; i < results.Count; i++)
         {
-            Results.Add(new ResultRowViewModel(results[i], position: i + 1, total: results.Count));
+            var displayEmoji = SkinToneApplier.Apply(results[i].Entry, Settings.PreferredSkinTone);
+            Results.Add(new ResultRowViewModel(results[i], position: i + 1, total: results.Count, displayEmoji));
         }
 
         HasNoResults = Query.Trim().Length > 0 && Results.Count == 0;

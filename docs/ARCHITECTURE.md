@@ -41,7 +41,7 @@ flowchart LR
 
 - Sources are joined on a VS16-free key, but the stored string is always the exact fully-qualified sequence from emoji-test.txt. Nothing in the pipeline rewrites an emoji string.
 - DataBuilder re-loads its output through `EmojiCatalogLoader` and refuses to write unless every fully-qualified sequence survives exactly once.
-- At startup the app loads the catalog (about 50 ms cold), measures font coverage (about 25 ms), and applies the filter. Stage 3 wires this in, off the UI thread.
+- At startup the app loads the catalog (about 50 ms cold), measures font coverage (about 25 ms), and applies the filter. **Stage 5** wires this in (see docs/DECISIONS.md: it was built in Stage 1 but not actually connected to the running app until then — a real gap, found and fixed while wiring Settings' "max emoji version" override, which needed the same code path).
 
 ## Search engine (Stage 2)
 
@@ -87,5 +87,43 @@ flowchart LR
 - `ClipboardGuard` takes an `IClipboard`; `SystemClipboard` is the real WinRT implementation, used only by the running app (it needs the WinUI app's own STA thread — see docs/DECISIONS.md).
 - Stage 3's commit path is copy-to-clipboard-and-toast for every keymap action (Enter, Alt+1-3, click, Ctrl+Enter); Stage 4 gives Enter/Alt+N/click real insertion while Ctrl+Enter stays copy-only, per SPEC §2.
 
+## Insertion engine (Stage 4)
+
+```mermaid
+flowchart LR
+    PVM["PopupViewModel<br/>Enter / Alt+1-3 / click"] --> IC["InsertionCoordinator<br/>App-layer orchestration"]
+    IC --> FA["ForegroundActivator<br/>SetForegroundWindow + poll"]
+    IC --> KRW["KeyReleaseWaiter<br/>wait for modifiers/Enter up"]
+    IC --> MS["MethodSelector (Core, pure)<br/>elevation → override → default"]
+    MS -- UnicodeInjection --> TI["TextInjector.SendUnicodeText"]
+    MS -- ClipboardPaste --> CG["ClipboardGuard<br/>snapshot → set → paste → restore"]
+    MS -- Copy --> CG2["ClipboardGuard.Copy"] --> TW["ToastWindow"]
+    CG --> TI2["TextInjector.SendPasteShortcut"]
+```
+
+- `MethodSelector` is pure Core logic (elevated/unknown target always forces Copy — SendInput into an elevated process fails *silently*, so this must be decided before attempting injection, never inferred from a failed attempt); everything either side of it is Platform (Win32) or App (orchestration).
+- The clipboard-paste path snapshots the clipboard, sets the emoji, sends the paste shortcut, waits `ClipboardRestoreDelay`, then restores the snapshot only if the clipboard's sequence number is still what it was right after the set (SPEC §4.3) — otherwise something else changed it meanwhile and restoring would clobber that.
+- The FlaUI E2E tests (`NotepadTests`) exercise this whole path against a real Notepad window and caught a real production bug doing so (`PopupWindow.Show` never actually took keyboard focus) — see docs/DECISIONS.md's Stage 4 section.
+
+## Settings, startup, first run, personalization (Stage 5)
+
+```mermaid
+flowchart LR
+    SJ[("settings.json")] --> SS["SettingsStore (Core)<br/>per-field fallback, quarantine on corrupt"]
+    UJ[("usage.json")] --> US["UsageStore (Core)<br/>wraps FrecencyStore.Snapshot"]
+    SS --> QA["QuickEmojiApplication<br/>composition root"]
+    US --> QA
+    QA --> SW["SettingsWindow<br/>General / Appearance / Search / Insertion / About"]
+    QA --> FRW["FirstRunWindow<br/>shown once, isFirstRun = !settings.json exists"]
+    QA --> RKS["RunKeyStartup (Platform)<br/>HKCU Run key, synced from LaunchAtStartup"]
+    SW -- Save --> QA
+    QA -- rebuild on MaxEmojiVersion change --> PVM2["PopupViewModel.UpdateEngine"]
+```
+
+- `AppSettings`/`SettingsStore`/`UsageStore`/`SkinToneApplier` live in Core (pure, no Windows types), per CLAUDE.md's layout table ("settings model/persistence" is a Core responsibility). `AppSettings` uses its own `HotkeySetting`/`PopupPosition`/`AppTheme` types rather than Platform's — Core may not reference Platform even for a Win32-free type — and `App.Settings.HotkeyGestureMapping` converts between them at the one boundary that needs both.
+- `SettingsStore`/`UsageStore` parse into a loosely-typed `JsonObject` and validate each field independently, rather than deserializing straight into a POCO, specifically so one invalid field falls back to its own default instead of failing the whole load (SPEC §7).
+- The popup is still never recreated (Stage 3's rule): a Settings save updates `PopupViewModel.Settings` in place and, if the font-filtered catalog needs rebuilding (the "max emoji version" override changed), swaps the search engine via `PopupViewModel.UpdateEngine` rather than replacing the window.
+- `RunKeyStartup` uses the managed `Microsoft.Win32.Registry` API directly — it is already a BCL wrapper, not raw Win32 interop, so CLAUDE.md's CsWin32 rule does not apply to it.
+
 ## Startup (Stage 0)
-`Program.Main` parses the command line, configures Serilog (`%LOCALAPPDATA%\QuickEmoji\logs`, 7 × 1 MB, shared across the brief overlap a second single-instance launch can create), creates the `SingleInstanceGuard` (SPEC §8), then starts WinUI with a `DispatcherQueueSynchronizationContext`. `QuickEmojiApplication.OnLaunched` wires the catalog, search engine, hotkey, popup, toast and tray together. `--startup-check` exits as soon as the full composition is up.
+`Program.Main` parses the command line, configures Serilog (`%LOCALAPPDATA%\QuickEmoji\logs`, 7 × 1 MB, shared across the brief overlap a second single-instance launch can create), creates the `SingleInstanceGuard` (SPEC §8), then starts WinUI with a `DispatcherQueueSynchronizationContext`. `QuickEmojiApplication.OnLaunched` wires the catalog, search engine, hotkey, popup, toast, tray, settings/usage persistence, and (Stage 5) first-run detection together. `--startup-check` exits as soon as the full composition is up — Stage 5 extended this check to also construct and close the Settings and first-run windows, since a XAML parse/binding error only surfaces when a real WinUI window is actually built.

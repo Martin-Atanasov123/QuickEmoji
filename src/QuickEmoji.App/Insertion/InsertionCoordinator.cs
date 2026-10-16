@@ -11,16 +11,19 @@ namespace QuickEmoji.App.Insertion;
 /// (Core's pure <see cref="MethodSelector"/>), then inject, paste, or fall back to copy. Thin — it calls Core
 /// and Platform (CLAUDE.md), with no Win32 or WinRT calls of its own.
 /// </summary>
-public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<string> showToast)
+public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<string> showToast, Action<string>? recordOutcome = null)
 {
     private static readonly TimeSpan ForegroundTimeout = TimeSpan.FromMilliseconds(250);
     private static readonly TimeSpan KeyReleaseTimeout = TimeSpan.FromMilliseconds(300);
 
-    /// <summary>Default until Stage 5 adds the settings window's "clipboard restore delay" field (SPEC §6.2).</summary>
-    private static readonly TimeSpan ClipboardRestoreDelay = TimeSpan.FromMilliseconds(150);
+    /// <summary>Settings → Insertion → "clipboard restore delay" (SPEC §6.2); Stage 5's default until the user changes it.</summary>
+    public TimeSpan ClipboardRestoreDelay { get; set; } = TimeSpan.FromMilliseconds(150);
 
-    /// <summary>Empty until Stage 5 adds the settings window's per-app overrides table (SPEC §6.2).</summary>
+    /// <summary>Settings → Insertion → per-app overrides table (SPEC §6.2); empty until the user adds one.</summary>
     public IReadOnlyList<AppOverride> Overrides { get; set; } = [];
+
+    /// <summary>Settings → Insertion → "default method (Auto or Clipboard)" (SPEC §6.2).</summary>
+    public InsertionMethod DefaultMethod { get; set; } = InsertionMethod.UnicodeInjection;
 
     /// <summary>
     /// Commits <paramref name="emoji"/> into <paramref name="target"/> (SPEC §4.2). Never throws for an invalid
@@ -48,7 +51,7 @@ public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<s
 
         await KeyReleaseWaiter.WaitForReleaseAsync(KeyReleaseTimeout);
 
-        var selection = MethodSelector.Select(target.ProcessName, target.IsElevatedOrUnknown, Overrides);
+        var selection = MethodSelector.Select(target.ProcessName, target.IsElevatedOrUnknown, Overrides, DefaultMethod);
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
         switch (selection.Method)
@@ -58,6 +61,7 @@ public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<s
                 Log.Information(
                     "Inserted via {Method} into {Process} ({Reason}); {Accepted} of {Expected} events accepted in {ElapsedMs} ms",
                     selection.Method, target.ProcessName, selection.Reason, accepted, emoji.Length * 2, stopwatch.Elapsed.TotalMilliseconds);
+                recordOutcome?.Invoke($"{selection.Method} into {target.ProcessName ?? "(unknown)"}: ok");
                 break;
 
             case InsertionMethod.ClipboardPaste:
@@ -68,6 +72,7 @@ public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<s
             default:
                 Log.Information("Copy fallback for {Process} ({Reason})", target.ProcessName, selection.Reason);
                 CopyFallback(emoji, DescribeCause(selection.Reason, target));
+                recordOutcome?.Invoke($"Copy fallback for {target.ProcessName ?? "(unknown)"}: {selection.Reason}");
                 break;
         }
     }
@@ -92,6 +97,7 @@ public sealed class InsertionCoordinator(ClipboardGuard clipboardGuard, Action<s
             "Inserted via {Method} ({Shortcut}) into {Process} ({Reason}); clipboard {RestoreOutcome} in {ElapsedMs} ms",
             selection.Method, shortcut, processName, selection.Reason, restored ? "restored" : "left as-is (changed meanwhile)",
             stopwatch.Elapsed.TotalMilliseconds);
+        recordOutcome?.Invoke($"{selection.Method} ({shortcut}) into {processName ?? "(unknown)"}: {(restored ? "ok" : "clipboard changed meanwhile")}");
     }
 
     private void CopyFallback(string emoji, string? cause)

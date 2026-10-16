@@ -17,9 +17,9 @@ public sealed partial class ResultRowViewModel : ObservableObject
 {
     private static readonly SolidColorBrush Transparent = new(Colors.Transparent);
 
-    public ResultRowViewModel(SearchResult result, int position, int total)
+    public ResultRowViewModel(SearchResult result, int position, int total, string displayEmoji)
     {
-        Emoji = result.Entry.Emoji;
+        Emoji = displayEmoji;
         Name = ToTitleCase(result.Entry.Name);
         MatchExplanation = result.ExplainsMatch ? $"matched: {result.MatchedTerm}" : null;
         MatchExplanationVisibility = MatchExplanation is null ? Visibility.Collapsed : Visibility.Visible;

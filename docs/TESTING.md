@@ -76,10 +76,21 @@ Tests use xUnit v3 on Microsoft Testing Platform (see DECISIONS.md).
 | `MethodSelectorTests` | SPEC §4.2 step 4's pure method choice: elevated/unknown target → Copy; a per-app override wins when present; otherwise Unicode injection. |
 | `ClipboardGuardTests` | `Copy` (from Stage 3) plus Stage 4's `PrepareForPasteAsync`/`RestoreIfUnchangedAsync`: snapshot captured before overwriting, restore only when the sequence number is unchanged (i.e. nothing else touched the clipboard meanwhile), skip-restore for an unrestorable (too-large or empty) snapshot. |
 
+### What the settings/startup/personalization tests prove (Stage 5)
+| Test | Proves |
+|---|---|
+| `SettingsStoreTests` | SPEC §7's per-field recovery: a missing file loads defaults; a round-trip of every field survives save→load; unparseable JSON or a non-object root is quarantined to `*.bad-<timestamp>`; an unknown field is ignored while the rest of the file still loads; a wrong-typed field, an unrecognized enum name, a hotkey with no required modifier, a negative clipboard delay, and a stored default method of `Copy` each fall back to just that field's default; a malformed per-app-override entry is skipped without discarding the valid ones. |
+| `UsageStoreTests` | The same corruption/fallback handling as `SettingsStoreTests`, applied to `usage.json`'s frecency snapshot; a full save→load round-trip reproduces identical decayed counts. |
+| `AtomicFileWriterTests` | First write creates the file directly; an overwrite goes through a temp file and leaves none behind; a write failure never touches the existing destination. |
+| `FrecencyStoreTests` (Snapshot/FromSnapshot/Clear additions) | A snapshot captures each entry's raw value and timestamp; a store rebuilt from a snapshot decays identically from a brand-new clock (proving the timestamp really transferred, not just the value); `Clear` discards every count. |
+| `SkinToneApplierTests` | SPEC §6.2's "preferred skin tone": a uniformly-toned variant is picked when one exists; `None`, no variants, or no matching variant all fall back to the base emoji; a multi-person emoji only matches a variant that is uniformly the preferred tone. |
+| `MethodSelectorTests` (default-method additions) | SPEC §6.2's "default method (Auto or Clipboard)" setting replaces the fallback when nothing else applies, without ever overriding the elevation safety check or a matching per-app override. |
+| `RunKeyStartupTests` (Win32) | Real HKCU registry round-trip: enable, check, disable, re-disable (idempotent), overwrite-on-re-enable; every test uses its own throwaway value name and cleans up, never touching QuickEmoji's real startup entry. |
+
 ### Current E2E tests
 | Test | Checks |
 |---|---|
-| `AppLaunchTests.App_starts_and_exits_cleanly_in_startup_check_mode` | `QuickEmoji.exe --startup-check` exits with code 0 within 30 s, with the full composition (catalog, hotkey, popup, toast, tray) wired up and torn down. |
+| `AppLaunchTests.App_starts_and_exits_cleanly_in_startup_check_mode` | `QuickEmoji.exe --startup-check` exits with code 0 within 30 s, with the full composition (catalog, hotkey, popup, toast, tray, settings/usage persistence, and — Stage 5 — the Settings and first-run windows) wired up and torn down. |
 | `NotepadTests.Hotkey_then_Enter_inserts_the_emoji_after_the_typed_text` | Win+Shift+E opens the popup with real keyboard focus (see DECISIONS.md — this caught a real focus bug), typing a query and pressing Enter inserts the emoji via Unicode injection into Notepad, after the previously-typed text. |
 | `NotepadTests.Esc_closes_the_popup_and_changes_nothing` | Esc closes the popup without inserting anything; Notepad's text is unchanged. |
 | `NotepadTests.Inserting_an_emoji_does_not_change_the_clipboard` | SPEC §4.2 step 5: Unicode injection never touches the clipboard. A marker written to the clipboard before the hotkey is still there, byte-for-byte, after the emoji is inserted. |
@@ -186,3 +197,13 @@ Everything below needs a real desktop, several different target apps, and (for t
 11. With a stopwatch or screen recording, confirm the popup appears within roughly 50 ms of pressing the hotkey (CLAUDE.md's gotcha about not recreating the popup), and that insertion completes without a visible stall after pressing Enter.
 
 Launch-at-startup, Explorer restart, two-monitor and DPI cases are already covered by Stage 3's matrix above and are not re-tested here; nothing about insertion changes them.
+
+### Stage 5 — manual checks (not a human gate; the plan marks only Stages 3 and 4 as such, but these are new interactive windows no automated test can visually verify)
+1. Delete `%LOCALAPPDATA%\QuickEmoji\settings.json` (or rename it aside) and launch the app: the first-run welcome window appears, shows the current hotkey, and typing into its test field then pressing the hotkey opens the popup normally. Toggle "Launch at startup" on, click "Got it": confirm an HKCU `...\CurrentVersion\Run\QuickEmoji` value now exists pointing at the exe with `--background`.
+2. Open Settings from the tray menu. On **General**: click the hotkey field, press a new combination (e.g. Ctrl+Alt+F9) — confirm it live-registers and the field updates; press Ctrl+Alt+something-else and confirm the AltGr warning appears; try a combination already held by another app (e.g. Ctrl+Alt+Delete is reserved so pick a real conflict, such as a hotkey another running app owns) and confirm the inline conflict message. Change popup position and confirm the next hotkey press uses it.
+3. On **Appearance**: switch Light/Dark/System and confirm the popup/toast follow after Save (reopen them to see the change — they do not repaint live while already open).
+4. On **Search**: toggle English/Bulgarian off one at a time and confirm search results change accordingly; set a preferred skin tone and confirm inserted emoji use it; set "max emoji version" to an old value (e.g. `5.0`) and confirm newer emoji drop out of results; click "Clear usage history" and confirm the empty-query defaults reset.
+5. On **Insertion**: switch the default method to Clipboard and confirm a plain insertion now goes through copy+paste instead of direct injection (check the log file for `ClipboardPaste`); add a per-app override for `notepad` → Copy and confirm Notepad always gets the copy-and-toast fallback regardless of the default.
+6. On **About**: confirm the version string is sensible, "Open log folder" opens Explorer at the right folder, and "Copy diagnostics" followed by Ctrl+V somewhere pastes a readable report with no emoji-search text in it.
+7. Close Settings without clicking Save after making changes: confirm nothing was applied or persisted (reopen Settings — the old values are still there).
+8. Quit and relaunch the app a few times after using it: confirm your most-used emoji (empty-query results) persist across restarts, and `usage.json` exists and is valid JSON.

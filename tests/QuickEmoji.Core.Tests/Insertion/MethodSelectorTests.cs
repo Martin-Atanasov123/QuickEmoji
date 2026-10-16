@@ -89,4 +89,31 @@ public sealed class MethodSelectorTests
     {
         Assert.Throws<ArgumentNullException>(() => MethodSelector.Select("notepad", false, null!));
     }
+
+    [Fact]
+    public void The_default_method_setting_replaces_unicode_injection_when_nothing_else_applies()
+    {
+        var selection = MethodSelector.Select("wordpad", isElevatedOrUnknown: false, [], InsertionMethod.ClipboardPaste);
+
+        Assert.Equal(InsertionMethod.ClipboardPaste, selection.Method);
+        Assert.Equal("default", selection.Reason);
+    }
+
+    [Fact]
+    public void The_default_method_setting_never_overrides_the_elevation_safety_check()
+    {
+        var selection = MethodSelector.Select("notepad", isElevatedOrUnknown: true, [], InsertionMethod.ClipboardPaste);
+
+        Assert.Equal(InsertionMethod.Copy, selection.Method);
+    }
+
+    [Fact]
+    public void A_matching_override_still_wins_over_the_default_method_setting()
+    {
+        var overrides = new[] { new AppOverride("mstsc", InsertionMethod.UnicodeInjection) };
+
+        var selection = MethodSelector.Select("mstsc", isElevatedOrUnknown: false, overrides, InsertionMethod.ClipboardPaste);
+
+        Assert.Equal(InsertionMethod.UnicodeInjection, selection.Method);
+    }
 }

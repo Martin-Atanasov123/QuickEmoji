@@ -11,7 +11,18 @@ public sealed record MethodSelection(InsertionMethod Method, PasteKeys PasteKeys
 /// </summary>
 public static class MethodSelector
 {
-    public static MethodSelection Select(string? processName, bool isElevatedOrUnknown, IReadOnlyList<AppOverride> overrides)
+    /// <summary>
+    /// <paramref name="defaultMethod"/> is SPEC §6.2's Settings → Insertion → "default method (Auto or
+    /// Clipboard)" — Auto is <see cref="InsertionMethod.UnicodeInjection"/>, Clipboard is
+    /// <see cref="InsertionMethod.ClipboardPaste"/>. It never overrides the elevation safety check above it, and
+    /// <see cref="InsertionMethod.Copy"/> is not a meaningful default (callers should not pass it; if they do, it
+    /// is honored as "always copy" rather than rejected, since nothing about that choice is unsafe).
+    /// </summary>
+    public static MethodSelection Select(
+        string? processName,
+        bool isElevatedOrUnknown,
+        IReadOnlyList<AppOverride> overrides,
+        InsertionMethod defaultMethod = InsertionMethod.UnicodeInjection)
     {
         ArgumentNullException.ThrowIfNull(overrides);
 
@@ -28,6 +39,6 @@ public static class MethodSelector
             return new MethodSelection(match.Method, match.PasteKeys, $"per-app override for {processName}");
         }
 
-        return new MethodSelection(InsertionMethod.UnicodeInjection, PasteKeys.CtrlV, "default");
+        return new MethodSelection(defaultMethod, PasteKeys.CtrlV, "default");
     }
 }
