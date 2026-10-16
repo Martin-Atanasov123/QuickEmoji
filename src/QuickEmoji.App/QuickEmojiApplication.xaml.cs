@@ -1,5 +1,6 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using QuickEmoji.App.Insertion;
 using QuickEmoji.App.Popup;
 using QuickEmoji.App.Toast;
 using QuickEmoji.App.Tray;
@@ -16,8 +17,7 @@ namespace QuickEmoji.App;
 
 /// <summary>
 /// The composition root (CLAUDE.md: "App... thin: it calls Core and Platform"). Wires the catalog, search
-/// engine, hotkey, popup, toast and tray together. Stage 3: committing an emoji copies it to the clipboard and
-/// shows a toast; Stage 4 replaces that with real insertion.
+/// engine, hotkey, popup, toast, tray and insertion engine together.
 /// </summary>
 public partial class QuickEmojiApplication : Application
 {
@@ -43,9 +43,10 @@ public partial class QuickEmojiApplication : Application
         var catalog = EmojiCatalogLoader.LoadEmbedded();
         var engine = new EmojiSearchEngine(catalog, new FrecencyStore());
         var clipboard = new ClipboardGuard();
+        var insertion = new InsertionCoordinator(clipboard, ShowToast);
 
         _toast = new ToastWindow();
-        _popup = new PopupWindow(engine, clipboard, ShowToast);
+        _popup = new PopupWindow(engine, insertion, clipboard, ShowToast);
 
         _hotkeyService = new HotkeyService();
         _hotkeyService.HotkeyPressed += (_, _) => dispatcher.TryEnqueue(OnHotkeyPressed);
@@ -80,6 +81,7 @@ public partial class QuickEmojiApplication : Application
     {
         // Capture happens inside the hotkey handler, the only moment the right window is guaranteed foreground (SPEC §4.1, §5).
         var target = TargetCapture.Capture();
+        Log.Debug("Hotkey pressed; captured target {Process}", target.ProcessName);
         _popup!.Show(PopupPositionMode.NearCaret, target);
     }
 

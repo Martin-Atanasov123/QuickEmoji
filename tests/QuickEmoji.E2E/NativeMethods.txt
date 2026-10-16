@@ -1,0 +1,13 @@
+// Clipboard oracle for NotepadTests: reads and writes the clipboard directly via raw Win32 (no STA/COM
+// requirement, unlike System.Windows.Forms.Clipboard or the WinRT clipboard) to set up and assert the
+// "clipboard left unchanged" oracle.
+OpenClipboard
+CloseClipboard
+GetClipboardData
+SetClipboardData
+EmptyClipboard
+GlobalAlloc
+GlobalLock
+GlobalUnlock
+GlobalSize
+GLOBAL_ALLOC_FLAGS

@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using QuickEmoji.App.Insertion;
 using QuickEmoji.Core.Search;
 using QuickEmoji.Platform.Clipboard;
 using QuickEmoji.Platform.Display;
@@ -19,8 +20,8 @@ namespace QuickEmoji.App.Popup;
 
 /// <summary>
 /// The popup (SPEC §6.1, §2). Created once at startup (CLAUDE.md gotcha: re-creating it breaks the 50 ms show
-/// budget) and shown or hidden thereafter. Stage 3: committing an emoji copies it to the clipboard and shows a
-/// toast (SPEC §4.6); Stage 4 replaces the commit path with real insertion.
+/// budget) and shown or hidden thereafter. Enter/Alt+1-3/click insert via <see cref="InsertionCoordinator"/> when
+/// a target was captured (hotkey mode), or copy when there is none (tray mode, SPEC §6.3). Ctrl+Enter always copies.
 /// </summary>
 public sealed partial class PopupWindow : Window
 {
@@ -28,17 +29,20 @@ public sealed partial class PopupWindow : Window
     private const int ShowAnimationMs = 120;
     private const double ShowTranslateY = 6;
 
+    private readonly InsertionCoordinator _insertion;
     private readonly ClipboardGuard _clipboard;
     private readonly Action<string> _showToast;
     private readonly UISettings _uiSettings = new();
     private readonly nint _hwnd;
     private bool _activatedByShow;
+    private TargetContext? _target;
 
-    public PopupWindow(EmojiSearchEngine engine, ClipboardGuard clipboard, Action<string> showToast)
+    public PopupWindow(EmojiSearchEngine engine, InsertionCoordinator insertion, ClipboardGuard clipboard, Action<string> showToast)
     {
+        _insertion = insertion;
         _clipboard = clipboard;
         _showToast = showToast;
-        ViewModel = new PopupViewModel(engine, OnCommitInsert, OnCommitCopy);
+        ViewModel = new PopupViewModel(engine, OnCommitInsertAsync, OnCommitCopyAsync);
 
         InitializeComponent();
         _hwnd = WindowNative.GetWindowHandle(this);
@@ -56,11 +60,17 @@ public sealed partial class PopupWindow : Window
     /// </summary>
     public void Show(PopupPositionMode mode, TargetContext? target)
     {
+        _target = target;
         ViewModel.Reset();
         Position(mode, target);
 
         _activatedByShow = true;
         AppWindow.Show();
+        // AppWindow.Show() alone only makes the window visible; WinUI 3's own Activate() is not reliable enough
+        // here to take keyboard focus away from whatever the user was typing into, so this calls
+        // SetForegroundWindow directly (CLAUDE.md gotcha: "Activate the popup inside the handler").
+        Activate();
+        WindowChrome.BringToForeground(_hwnd);
         SearchBox.Focus(FocusState.Programmatic);
         PlayShowAnimation();
     }
@@ -156,7 +166,8 @@ public sealed partial class PopupWindow : Window
         _activatedByShow = false;
     }
 
-    private void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    // async void is the accepted shape for a top-level WinUI input event handler (there is no caller to await it).
+    private async void SearchBox_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         var ctrl = IsDown(VirtualKey.Control);
         var alt = IsDown(VirtualKey.Menu);
@@ -169,12 +180,12 @@ public sealed partial class PopupWindow : Window
                 e.Handled = true;
                 return;
             case VirtualKey.Enter when ctrl:
-                ViewModel.CopySelected();
                 e.Handled = true;
+                await ViewModel.CopySelectedAsync();
                 return;
             case VirtualKey.Enter:
-                ViewModel.CommitSelected();
                 e.Handled = true;
+                await ViewModel.CommitSelectedAsync();
                 return;
             case VirtualKey.Up:
                 ViewModel.MoveSelection(-1);
@@ -189,43 +200,57 @@ public sealed partial class PopupWindow : Window
                 e.Handled = true;
                 return;
             case VirtualKey.Number1 when alt:
-                ViewModel.CommitRow(0);
                 e.Handled = true;
+                await ViewModel.CommitRowAsync(0);
                 return;
             case VirtualKey.Number2 when alt:
-                ViewModel.CommitRow(1);
                 e.Handled = true;
+                await ViewModel.CommitRowAsync(1);
                 return;
             case VirtualKey.Number3 when alt:
-                ViewModel.CommitRow(2);
                 e.Handled = true;
+                await ViewModel.CommitRowAsync(2);
                 return;
         }
     }
 
-    private void ResultRow_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    private async void ResultRow_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
     {
         if (sender is FrameworkElement { Tag: ResultRowViewModel row })
         {
             var index = ViewModel.Results.IndexOf(row);
             if (index >= 0)
             {
-                ViewModel.CommitRow(index);
+                await ViewModel.CommitRowAsync(index);
             }
         }
     }
 
-    private void OnCommitInsert(string emoji) => CopyAndClose(emoji);
-
-    private void OnCommitCopy(string emoji) => CopyAndClose(emoji);
-
-    private void CopyAndClose(string emoji)
+    /// <summary>
+    /// Enter / Alt+1-3 / row click: real insertion when a target was captured (hotkey mode); with no target
+    /// (tray mode — SPEC §6.3, "there is no target; Enter copies instead"), falls back to copy.
+    /// </summary>
+    private async Task OnCommitInsertAsync(string emoji)
     {
-        // Stage 3: both paths copy and show a toast (SPEC §4.6). Stage 4 gives OnCommitInsert real injection;
-        // OnCommitCopy (Ctrl+Enter) stays exactly this — SPEC §2 says it must never insert.
-        _clipboard.Copy(emoji);
         Hide();
+        if (_target is { } target)
+        {
+            await _insertion.InsertAsync(target, emoji);
+        }
+        else
+        {
+            _clipboard.Copy(emoji);
+            _showToast($"Copied {emoji} — press Ctrl+V");
+        }
+    }
+
+    /// <summary>Ctrl+Enter: always copies, never inserts (SPEC §2).</summary>
+    private Task OnCommitCopyAsync(string emoji)
+    {
+        Hide();
+        _clipboard.Copy(emoji);
         _showToast($"Copied {emoji} — press Ctrl+V");
+        return Task.CompletedTask;
     }
 
     private static bool IsDown(VirtualKey key) =>

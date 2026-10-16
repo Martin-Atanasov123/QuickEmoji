@@ -13,13 +13,13 @@ public sealed partial class PopupViewModel : ObservableObject
 {
     private readonly EmojiSearchEngine _engine;
 
-    /// <summary>Enter / Alt+1-3 / row click — Stage 3: copy to clipboard and show a toast (SPEC §4.6); Stage 4 replaces this with real insertion.</summary>
-    private readonly Action<string> _onCommit;
+    /// <summary>Enter / Alt+1-3 / row click: real insertion (Stage 4) or, with no target, copy (SPEC §6.3 tray mode).</summary>
+    private readonly Func<string, Task> _onCommit;
 
-    /// <summary>Ctrl+Enter — always copies, even after Stage 4 adds real insertion (SPEC §2: "do not insert").</summary>
-    private readonly Action<string> _onCopy;
+    /// <summary>Ctrl+Enter — always copies, never inserts (SPEC §2: "do not insert").</summary>
+    private readonly Func<string, Task> _onCopy;
 
-    public PopupViewModel(EmojiSearchEngine engine, Action<string> onCommit, Action<string> onCopy)
+    public PopupViewModel(EmojiSearchEngine engine, Func<string, Task> onCommit, Func<string, Task> onCopy)
     {
         _engine = engine;
         _onCommit = onCommit;
@@ -76,24 +76,24 @@ public sealed partial class PopupViewModel : ObservableObject
     }
 
     /// <summary>Enter: commits the selected row, or row 1 if nothing was moved.</summary>
-    public void CommitSelected() => Commit(SelectedIndex, _onCommit);
+    public Task CommitSelectedAsync() => CommitAsync(SelectedIndex, _onCommit);
 
     /// <summary>Alt+1 / Alt+2 / Alt+3 or a row click: commits that row directly, regardless of the current selection.</summary>
-    public void CommitRow(int index) => Commit(index, _onCommit);
+    public Task CommitRowAsync(int index) => CommitAsync(index, _onCommit);
 
     /// <summary>Ctrl+Enter: copies the selected row without inserting, regardless of the current selection.</summary>
-    public void CopySelected() => Commit(SelectedIndex, _onCopy);
+    public Task CopySelectedAsync() => CommitAsync(SelectedIndex, _onCopy);
 
-    private void Commit(int index, Action<string> action)
+    private Task CommitAsync(int index, Func<string, Task> action)
     {
         if (index < 0 || index >= Results.Count)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         var emoji = Results[index].Emoji;
         _engine.RecordUse(Query, emoji);
-        action(emoji);
+        return action(emoji);
     }
 
     private void RunSearch()

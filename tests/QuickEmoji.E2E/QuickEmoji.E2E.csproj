@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <IsPackable>false</IsPackable>
     <RootNamespace>QuickEmoji.E2E</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!--
       Every test here is [Trait("Category","E2E")], so the default filtered run selects zero tests.
       Exit code 8 ("zero tests ran") is expected in that case and must not fail the run.
@@ -15,6 +16,9 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="FlaUI.Core" />
     <PackageReference Include="FlaUI.UIA3" />
+    <!-- Only the E2E test driver may call Win32 clipboard functions directly (CLAUDE.md's "only ClipboardGuard"
+         rule is about the shipped app); here it is the test oracle checking the clipboard was left untouched. -->
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

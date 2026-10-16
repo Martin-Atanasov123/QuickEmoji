@@ -67,10 +67,24 @@ Tests use xUnit v3 on Microsoft Testing Platform (see DECISIONS.md).
 | `MonitorQueryTests` (Win32) | Real monitor/DPI/cursor queries return sane values, including for an off-screen point. |
 | `ClipboardGuardTests` | `Copy` against a fake clipboard: the text, the history/roaming exclusion flags, and the Unicode (ZWJ) sequence passed through. The real clipboard needs the running WinUI app's own thread (see docs/DECISIONS.md), so it is not exercised here. |
 
+### What the insertion-engine tests prove (Stage 4)
+| Test | Proves |
+|---|---|
+| `InputBuilderTests` | SPEC §4.2 step 5's `INPUT[]` arrays for Unicode text and the 5 named paste-shortcut sequences: correct key-down/up pairing, `KEYEVENTF_UNICODE`, and modifier ordering. |
+| `KeyReleaseWaiterTests` | Returns immediately once no modifier/Enter key is held (the fast path legitimately skips a cancellation check already satisfied); polls until release otherwise. |
+| `ForegroundActivatorTests` | `SetForegroundWindow` + bounded poll: succeeds once the target becomes foreground, times out (returns false, never throws) if it never does, treats a null/zero handle as failure. |
+| `MethodSelectorTests` | SPEC §4.2 step 4's pure method choice: elevated/unknown target → Copy; a per-app override wins when present; otherwise Unicode injection. |
+| `ClipboardGuardTests` | `Copy` (from Stage 3) plus Stage 4's `PrepareForPasteAsync`/`RestoreIfUnchangedAsync`: snapshot captured before overwriting, restore only when the sequence number is unchanged (i.e. nothing else touched the clipboard meanwhile), skip-restore for an unrestorable (too-large or empty) snapshot. |
+
 ### Current E2E tests
 | Test | Checks |
 |---|---|
 | `AppLaunchTests.App_starts_and_exits_cleanly_in_startup_check_mode` | `QuickEmoji.exe --startup-check` exits with code 0 within 30 s, with the full composition (catalog, hotkey, popup, toast, tray) wired up and torn down. |
+| `NotepadTests.Hotkey_then_Enter_inserts_the_emoji_after_the_typed_text` | Win+Shift+E opens the popup with real keyboard focus (see DECISIONS.md — this caught a real focus bug), typing a query and pressing Enter inserts the emoji via Unicode injection into Notepad, after the previously-typed text. |
+| `NotepadTests.Esc_closes_the_popup_and_changes_nothing` | Esc closes the popup without inserting anything; Notepad's text is unchanged. |
+| `NotepadTests.Inserting_an_emoji_does_not_change_the_clipboard` | SPEC §4.2 step 5: Unicode injection never touches the clipboard. A marker written to the clipboard before the hotkey is still there, byte-for-byte, after the emoji is inserted. |
+
+These three are real, live FlaUI tests against a built `QuickEmoji.exe` and a real Notepad window — not stubs. They take over keyboard focus for several seconds each and must never run in CI (`[Trait("Category","E2E")]` already excludes them from `dotnet test --filter "Category!=E2E"`). See DECISIONS.md's Stage 4 section for the several real bugs they caught (a missing window-activation call in production code) and the environment quirks that had to be worked around to make them reliable (Windows 11 Notepad's stub-process launch and tab-reuse behavior, throttled synthetic typing, raw-Win32 clipboard writes, and a stuck-key cleanup lesson).
 
 ## CI
 
@@ -139,4 +153,36 @@ Everything below needs a real desktop — the hotkey, focus changes, and other a
 **Shutdown**
 32. Right-click the tray icon → Quit. The tray icon disappears and the process exits (Task Manager shows no `QuickEmoji.exe`).
 
-The full manual matrix from SPEC §11 (elevated apps, per-app overrides, clipboard preserved, Explorer restart) is completed in Stage 4 and Stage 6, once insertion exists.
+### Stage 4 (human gate) — SPEC §11's full manual matrix
+Everything below needs a real desktop, several different target apps, and (for the elevated case) an admin prompt — none of it runs in CI. Build and run `dotnet run --project src/QuickEmoji.App` first; the E2E tests above already automate the Notepad case continuously, so this matrix focuses on the apps and conditions they cannot reach.
+
+**Insertion across apps** — for each of Notepad, Microsoft Word, a Chromium browser's address bar and a text area (e.g. Edge or Chrome), a messaging app (Discord, Telegram, or WhatsApp desktop), VS Code (both the editor and the integrated terminal), and Windows Terminal:
+1. Click into the app, type a short sentence, press **Win+Shift+E**, search for `heart`, press **Enter**. The emoji is inserted right after your typed text, with nothing else changed.
+2. Repeat searching for something that yields a skin-tone variant (e.g. `thumbs up`) and a ZWJ family emoji (e.g. `family`) if the app's font supports them — confirm the inserted sequence is the exact one shown in the popup, not split or re-normalized.
+3. Repeat for a flag emoji (e.g. `germany`) — confirm it inserts as the regional-indicator pair (SPEC's documented Segoe UI Emoji limitation: it will render as two letters, not artwork, except in apps with their own emoji font).
+
+**Elevated target**
+4. Run Notepad **as administrator** (right-click → Run as administrator) while QuickEmoji itself is not elevated. Type into it, press the hotkey, pick an emoji, press Enter. SPEC §4.6: insertion must fall back to copy, with a toast reading "Copied X — press Ctrl+V" that states the cause. Confirm Ctrl+V into the elevated Notepad then produces the emoji.
+
+**Esc / cancel**
+5. Repeat the basic insertion case in two different apps, but press **Esc** instead of Enter. Confirm no text changed in either app.
+
+**Keymap**
+6. In an app with multiple plausible matches (e.g. search `heart`), use **arrow keys** and **Alt+1/2/3** to insert a row other than the first. Confirm the correct emoji lands.
+
+**Clipboard preserved**
+7. Copy some distinctive text to the clipboard first (e.g. select a sentence in Notepad and Ctrl+C). Trigger the hotkey, insert an emoji via Enter (not Ctrl+Enter). Paste (Ctrl+V) afterward — the original copied text comes back, not the emoji: insertion must restore whatever was on the clipboard before it ran, in every app from step 1, including one where the clipboard held something non-text (e.g. copy an image in Paint first, then repeat the insertion + paste check).
+
+**Focus-change abort**
+8. Trigger the hotkey, then — while the popup is open — click into an entirely different window (not Esc, not the popup itself) before pressing Enter. SPEC §4.6: the popup should close (as documented in Stage 3) and nothing should be inserted into either window.
+
+**Per-app override** (if implemented by Stage 4 — otherwise mark as not yet applicable and note it in the Stage report)
+9. If a per-app override exists for a specific process (SPEC §4.2 step 4), confirm that app always uses its configured method (e.g. always Copy) regardless of elevation.
+
+**Hotkey conflict**
+10. Start another application that holds Win+Shift+E first (or simulate by registering it with a throwaway script), then launch QuickEmoji. Confirm the warning is logged (SPEC §5 — Settings-based UI arrives in Stage 5, see docs/DECISIONS.md) and the app does not crash.
+
+**Timing budget**
+11. With a stopwatch or screen recording, confirm the popup appears within roughly 50 ms of pressing the hotkey (CLAUDE.md's gotcha about not recreating the popup), and that insertion completes without a visible stall after pressing Enter.
+
+Launch-at-startup, Explorer restart, two-monitor and DPI cases are already covered by Stage 3's matrix above and are not re-tested here; nothing about insertion changes them.

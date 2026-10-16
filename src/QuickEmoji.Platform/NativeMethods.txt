@@ -52,3 +52,13 @@ GetDpiForMonitor
 DwmSetWindowAttribute
 DWMWINDOWATTRIBUTE
 DWM_WINDOW_CORNER_PREFERENCE
+
+// Insertion: Unicode/paste-key injection, foreground activation, key-release wait (Injection/*.cs, Targeting/ForegroundActivator.cs)
+SendInput
+INPUT
+KEYBDINPUT
+KEYBD_EVENT_FLAGS
+VIRTUAL_KEY
+
+// Clipboard: sequence-number change detection (Clipboard/*.cs)
+GetClipboardSequenceNumber
