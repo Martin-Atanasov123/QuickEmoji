@@ -42,6 +42,21 @@ Sources, versions and licences are listed in [THIRD_PARTY_NOTICES.md](THIRD_PART
 
 Emoji that the installed Segoe UI Emoji font cannot draw are hidden automatically. On Windows 11 build 26300 that means Emoji 18.0 and the England, Scotland and Wales flags. Windows draws country flags as two letters (for example "DE"); they stay searchable, and apps with their own emoji fonts show the real flag.
 
+## Performance (SPEC §9)
+
+Measured on the reference machine (Windows 11 build 26300, Debug build). Run `QuickEmoji.exe --perf` to log cold-start time and idle working set to `%LOCALAPPDATA%\QuickEmoji\logs`.
+
+| Metric | Budget | Measured |
+|---|---|---|
+| Search core per query | ≤ 5 ms (p95) | warm ≈ 0.10 ms, cold ≈ 0.004 ms (`SearchLatencyBenchmarkTests`) |
+| Catalog load | ≤ 150 ms | ~26-56 ms warm; CI asserts the fastest of 11 loads stays under budget |
+| Enter → emoji in target app | ≤ 150 ms (Unicode path) | ~2 ms (`InsertAsync`'s own timing, e.g. "4 of 4 events accepted in 2.1 ms") |
+| Cold start → tray ready | ≤ 1.5 s | ~0.69 s (`--perf`) |
+| Idle CPU | 0% (no polling, no timers while hidden) | No remaining polling loop: `SingleInstanceGuard`'s watcher blocks indefinitely on `WaitHandle.WaitAny` (fixed in Stage 6 — it previously woke every 1 s to re-check a flag); `ToastWindow`'s auto-hide timer stops on `Hide()`; the popup's show animation is one-shot. |
+| Idle working set | Target ≤ 100 MB | ~164 MB (`--perf`) — **exceeds the target.** This is the self-contained Windows App SDK's own baseline footprint, not a QuickEmoji-specific leak (see docs/DECISIONS.md); trimming it further (ReadyToRun tuning, trimming unused WinAppSDK components) is out of scope for this stage. |
+| Hotkey → popup visible and focused | ≤ 50 ms | Not independently measured — needs a human with a stopwatch or screen recording (docs/TESTING.md's Stage 4 manual matrix, item 11). |
+| Keystroke → results rendered | ≤ 16 ms (p95) | Not independently measured — bounded by the ≤5 ms search core plus rendering at most 3 result rows, but no frame-timing tool has verified the XAML re-render itself. |
+
 ## Documentation
 - [SPEC.md](SPEC.md): product and technical specification
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): layers, dependencies, data pipeline

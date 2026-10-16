@@ -4,7 +4,9 @@ using Microsoft.UI.Xaml;
 using QuickEmoji.App.Diagnostics;
 using QuickEmoji.App.FirstRun;
 using QuickEmoji.App.Insertion;
+using QuickEmoji.App.Perf;
 using QuickEmoji.App.Popup;
+using QuickEmoji.App.Reliability;
 using QuickEmoji.App.Settings;
 using QuickEmoji.App.Toast;
 using QuickEmoji.App.Tray;
@@ -54,6 +56,7 @@ public partial class QuickEmojiApplication : Application
         _options = options;
         _singleInstance = singleInstance;
         InitializeComponent();
+        GlobalExceptionHandlers.InstallFor(this);
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -126,6 +129,19 @@ public partial class QuickEmojiApplication : Application
         }
 
         Log.Information("QuickEmoji ready; hotkey {Gesture}", _currentHotkey);
+
+        if (_options.PerfTrace)
+        {
+            PerfTrace.LogColdStart(PerfTrace.ElapsedSinceProcessStart());
+            // A few seconds after "ready" rather than immediately: SPEC §9's "idle working set" means settled
+            // idle state, not the transient peak of initial JIT/GC activity right as startup finishes. Logging
+            // needs no UI thread, so this runs on a plain background task rather than the dispatcher.
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(3));
+                PerfTrace.LogWorkingSet();
+            });
+        }
 
         if (isFirstRun)
         {

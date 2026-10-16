@@ -12,6 +12,7 @@ public sealed class SingleInstanceGuard : IDisposable
 
     private readonly Mutex _mutex;
     private readonly EventWaitHandle _signalEvent;
+    private readonly ManualResetEvent _shutdown = new(initialState: false);
     private readonly Thread? _waitThread;
     private volatile bool _disposed;
 
@@ -55,6 +56,9 @@ public sealed class SingleInstanceGuard : IDisposable
         }
 
         _disposed = true;
+        _shutdown.Set();
+        _waitThread?.Join(TimeSpan.FromSeconds(1));
+
         if (IsFirstInstance)
         {
             _mutex.ReleaseMutex();
@@ -62,16 +66,25 @@ public sealed class SingleInstanceGuard : IDisposable
 
         _mutex.Dispose();
         _signalEvent.Dispose();
+        _shutdown.Dispose();
     }
 
+    /// <summary>
+    /// Blocks indefinitely on either handle rather than polling with a timeout (SPEC §8/§9: "no polling, no
+    /// timers") — <see cref="WaitHandle.WaitAny(WaitHandle[])"/> with no timeout costs nothing while idle and
+    /// wakes only when there is actually something to do: a real signal, or shutdown.
+    /// </summary>
     private void WaitForSignal()
     {
-        while (!_disposed)
+        WaitHandle[] handles = [_signalEvent, _shutdown];
+        while (true)
         {
-            if (_signalEvent.WaitOne(TimeSpan.FromSeconds(1)))
+            if (WaitHandle.WaitAny(handles) == 1)
             {
-                AnotherInstanceStarted?.Invoke(this, EventArgs.Empty);
+                return;
             }
+
+            AnotherInstanceStarted?.Invoke(this, EventArgs.Empty);
         }
     }
 }

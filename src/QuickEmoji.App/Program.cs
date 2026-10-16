@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using QuickEmoji.App.Logging;
+using QuickEmoji.App.Reliability;
 using QuickEmoji.Core;
 using Serilog;
 
@@ -14,6 +15,8 @@ public static class Program
     {
         var options = LaunchOptions.Parse(args);
         Log.Logger = LogSetup.CreateLogger(AppPaths.ForCurrentUser());
+        // SPEC §8: as early as possible, before anything (including Application.Start) can throw.
+        GlobalExceptionHandlers.InstallProcessWide();
         try
         {
             Log.Information(

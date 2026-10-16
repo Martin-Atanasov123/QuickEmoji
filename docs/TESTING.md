@@ -207,3 +207,10 @@ Launch-at-startup, Explorer restart, two-monitor and DPI cases are already cover
 6. On **About**: confirm the version string is sensible, "Open log folder" opens Explorer at the right folder, and "Copy diagnostics" followed by Ctrl+V somewhere pastes a readable report with no emoji-search text in it.
 7. Close Settings without clicking Save after making changes: confirm nothing was applied or persisted (reopen Settings — the old values are still there).
 8. Quit and relaunch the app a few times after using it: confirm your most-used emoji (empty-query results) persist across restarts, and `usage.json` exists and is valid JSON.
+
+### Stage 6 — manual checks (not a human gate; verifies reliability behavior no automated test can trigger safely)
+1. Run `QuickEmoji.exe --perf` and check the log file for `[perf] Cold start to tray ready` and (about 3 s later) `[perf] Working set` lines.
+2. With a debugger or a temporary throw added to a Settings window button handler, confirm an exception raised there is logged (`Unhandled UI exception; keeping the app running`) and the tray process and popup both keep working afterward — this is SPEC §8's "a failure inside the popup must never take down the app," which nothing in the automated suite can safely provoke (deliberately throwing from production code is not something to leave in committed tests).
+3. Launch the app, then launch it again a few seconds later: confirm the second process exits almost immediately (SPEC §8) and the first one's Settings window opens in response, with no delay longer than roughly a second (the watcher thread now wakes immediately on the signal, not on a 1 s poll tick).
+4. With the app idle (popup and toast both hidden, no interaction) for a minute or two, check Task Manager's CPU column reads 0% for the QuickEmoji process.
+5. Change display scaling (100%/150%/200%) or connect/disconnect a second monitor, then trigger the hotkey: confirm the popup appears correctly positioned on the next show (already covered by Stage 3's matrix, items 28-29 — this just reconfirms nothing in Stage 6 regressed it).
